@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 draw_bl_framework_v3_0.py
-통합 Black-Litterman 프레임워크 — 세로형(포트레이트) 인포그래픽 v3.0
+통합 Black-Litterman 프레임워크 — 세로형(포트레이트) 인포그래픽 v3.1 (수식 폰트=Computer Modern)
 
 레이아웃: 세로 단계 흐름(① 변동성 → ② 슬롯 설계 → ③ 분포 → ④ 사후/최적화)
 디자인: 기존 v2.x 코드 팔레트(흰 배경 + 네이비 보더 + ACCENT_BLUE/RED/GREEN)와
@@ -25,6 +25,7 @@ for _cand in ['Malgun Gothic', 'NanumGothic', 'Noto Sans CJK KR',
         plt.rcParams['font.family'] = _cand
         break
 plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['mathtext.fontset'] = 'cm'  # 수식: LaTeX Computer Modern
 
 # ──────────────────────────────────────────────────────────────
 # 1. 색상 팔레트 (기존 v2.x 코드 그대로)
@@ -273,7 +274,7 @@ ax.text(70, 8.7, r"$\mathbf{w}^*$  —  저변동 포트폴리오 최적 가중�
 # 저장
 # ──────────────────────────────────────────────────────────────
 out_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-out_path = os.path.join(out_dir, "bl_framework_v3_0.png")
+out_path = os.path.join(out_dir, "bl_framework_v3_1.png")
 plt.savefig(out_path, dpi=200, bbox_inches='tight', facecolor=WHITE)
 plt.close()
 print("saved:", out_path)
