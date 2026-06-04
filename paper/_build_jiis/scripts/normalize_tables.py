@@ -2,6 +2,7 @@
 import re, sys
 path = sys.argv[1]
 doc = open(path, encoding='utf-8').read()
+doc = doc.replace(' />', '/>')  # pandoc 직렬화 캐논화(자기닫힘 태그 공백 제거)
 HEAVY, LIGHT = 12, 4
 WIDE_NCOLS = 12
 FONT_WIDE = 13

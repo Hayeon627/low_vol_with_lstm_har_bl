@@ -637,34 +637,11 @@ TABLEPLACEHOLDER5
 
 본 연구는 특정 단일 슬롯만을 최적 모형으로 권장하지 않으며, 운용 목표에 따라 선택 가능한 두 가지 옵션을 제안한다. 모든 시장 국면에서 저변동 뷰를 일관되게 유지하는 방어형 옵션(Ensemble-defensive, $q^{\mathrm{lam}}$)과, $q^{\mathrm{ff3}}$의 크기와 부호가 시장 국면에 따라 변동하는 국면 적응형 옵션(Ensemble-adaptive, $q^{\mathrm{ff3}}$)이다. 각 옵션은 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$ 두 변형으로 운용할 수 있으며, 두 변형은 후술하듯 거의 동등한 성과를 보인다.
 
-\begin{table}[ht]
-\centering
-\caption{<표 6> 벤치마크 성능 비교 — 샤프 비율 $\times$ 5 기간. Ensemble 슬롯은 모두 $\mathbf{w}_{mkt} = \mathbf{w}^{\mathrm{mcap}}$ 고정, $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$ 두 변형을 비교한다. MDD, Sortino 등 보조 지표는 부록~부록 E 참조.}
-\label{tab:benchmark_sharpe}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & 0.93 & 0.81 & 1.23 & 0.61 & 1.19 \\
-$1/N$ (equal-weight)               & 0.86 & 0.78 & 1.23 & 0.70 & 0.47 \\
-Risk Parity ($1/\sigma$)           & 0.89 & 0.91 & 1.28 & 0.67 & 0.45 \\
-ANN-anchor \citep{pyo2018}         & 0.95 & 1.06 & 1.08 & 0.85 & 0.71 \\
-Ensemble-anchor ($\sigma$ 모형 교체) & 0.95 & 0.74 & 1.29 & 0.70 & 0.94 \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$)
-                                   & 1.07 & \textbf{1.08} & 1.32 & \textbf{0.96} & 0.64 \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$)
-                                   & 1.04 & 0.98 & 1.28 & 0.95 & 0.71 \\
-\textbf{Ensemble-adaptive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$)
-                                   & \textbf{1.10} & 0.87 & \textbf{1.42} & 0.89 & 1.07 \\
-\textbf{Ensemble-adaptive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$)
-                                   & 1.05 & 0.81 & 1.34 & 0.87 & \textbf{1.10} \\
-\bottomrule
-\end{tabular}
-\end{table}
+
+
+TABLEPLACEHOLDER6
+
+
 
 표~6에서 네 가지 앙상블 슬롯은 모두 외부 벤치마크와 BL 앵커 슬롯의 성과를 상회한다. 전체 분석 기간의 샤프 비율은 Ensemble-defensive가 $\mathbf{p}^{\mathrm{eq}}$ 1.07, $\mathbf{p}^{\mathrm{rp}}$ 1.04를 기록하였고, Ensemble-adaptive가 $\mathbf{p}^{\mathrm{eq}}$ 1.10, $\mathbf{p}^{\mathrm{rp}}$ 1.05를 나타냈다. 이는 $\mathbf{p}$ 벡터 변형 선택과 무관하게 전통적 벤치마크인 SPY(0.93), $1/N$ 동일 가중(0.86), Risk Parity(0.89) 및 ANN-anchor(0.95) 성과를 모두 능가하는 수치이다. MDD 측면에서도 네 가지 Ensemble 슬롯은 SPY 및 ANN-anchor 대비 더 얕은 손실을 기록하며, 특히 Ensemble-defensive 두 변형의 방어력이 가장 우수하다. 이와 관련한 상세 수치는~부록 E에 수록하였다.
 
@@ -1102,80 +1079,22 @@ R4 국면에서 스프레드가 음수로 전환되는 조합은 $(\mathbf{p}^{\
 
 4.4절(벤치마크 성능 비교)에서 보고한 샤프 비율 결과(표~6)에 대응하여, 동일한 슬롯과 5개 기간(All, R1 회복, R2 확장, R3 위기, R4 정상화)에 대한 보조 지표 3종을 첨부한다.  표~24는 Sortino 비율, 표~25 는 최대낙폭 (MDD), 표~26은 연환산 수익률을 보고하며, 각 표에서 4개 앙상블 슬롯 중 컬럼별 최우수 값을 굵게 표시한다. Sortino 비율과 연환산 수익률은 클수록, MDD는 0에 가까울수록 우위이다.
 
-\begin{table}[ht]
-\centering
-\caption{<표 24> 벤치마크 성능 비교 — Sortino 비율 $\times$ 5기간. 4개 앙상블 슬롯 중 컬럼별 최대값 굵게 표시.}
-\label{tab:benchmark_sortino}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & 1.38 & 1.41 & 1.66 & 1.06 & 2.36 \\
-$1/N$ (equal-weight)               & 1.21 & 1.32 & 1.47 & 1.08 & 0.88 \\
-Risk Parity ($1/\sigma$)           & 1.25 & 1.72 & 1.50 & 1.05 & 0.81 \\
-ANN-anchor \citep{pyo2018}         & 1.34 & 1.56 & 1.36 & 1.60 & 0.88 \\
-Ensemble-anchor ($\sigma$ 모형 교체) & 1.32 & 1.19 & 1.48 & 1.17 & 1.51 \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & \textbf{1.66} & \textbf{1.78} & \textbf{1.82} & \textbf{1.80} & 0.98 \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & 1.64          & 1.67          & 1.75          & 1.79          & 1.10 \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & 1.62          & 1.47          & 1.70          & 1.77          & 1.72 \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & 1.59          & 1.44          & 1.64          & 1.75          & \textbf{1.78} \\
-\bottomrule
-\end{tabular}
-\end{table}
 
-\begin{table}[ht]
-\centering
-\caption{<표 25> 벤치마크 성능 비교 — 최대낙폭 (MDD) $\times$ 5 기간 (0에 가까울수록 우위).
-4개 앙상블 슬롯 중 컬럼별 최우수(절대값 최소) 굵게 표시.}
-\label{tab:benchmark_mdd}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & $-23.9\%$ & $-16.2\%$ & $-13.5\%$ & $-23.9\%$ & $-7.6\%$  \\
-$1/N$ (equal-weight)               & $-24.3\%$ & $-21.4\%$ & $-17.3\%$ & $-16.8\%$ & $-12.0\%$ \\
-Risk Parity ($1/\sigma$)           & $-22.0\%$ & $-18.2\%$ & $-15.8\%$ & $-16.1\%$ & $-10.4\%$ \\
-ANN-anchor \citep{pyo2018}         & $-18.4\%$ & $-12.5\%$ & $-16.1\%$ & $-16.1\%$ & $-18.4\%$ \\
-Ensemble-anchor ($\sigma$ 모형 교체) & $-20.5\%$ & $-17.1\%$ & $-17.6\%$ & $-16.5\%$ & $-14.0\%$ \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & $-14.7\%$          & $\mathbf{-12.8\%}$ & $\mathbf{-8.2\%}$ & $-14.7\%$          & $-8.9\%$ \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & $\mathbf{-14.0\%}$ & $-14.0\%$          & $-8.5\%$          & $\mathbf{-13.4\%}$ & $-8.7\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & $-15.7\%$          & $-15.7\%$          & $-11.4\%$         & $-15.1\%$          & $-7.9\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & $-19.2\%$          & $-19.2\%$          & $-12.6\%$         & $-15.0\%$          & $\mathbf{-7.5\%}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
-\begin{table}[ht]
-\centering
-\caption{<표 26> 벤치마크 성능 비교 — 연환산 수익률 $\times$ 5 기간. 4개 앙상블 슬롯 중 컬럼별 최대값 굵게 표시.}
-\label{tab:benchmark_annret}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & $+14.4\%$ & $+12.7\%$ & $+14.2\%$ & $+12.4\%$ & $+19.7\%$ \\
-$1/N$ (equal-weight)               & $+14.8\%$ & $+14.3\%$ & $+16.1\%$ & $+15.5\%$ & $+10.5\%$ \\
-Risk Parity ($1/\sigma$)           & $+14.2\%$ & $+14.9\%$ & $+15.6\%$ & $+13.9\%$ & $+9.8\%$  \\
-ANN-anchor \citep{pyo2018}         & $+14.3\%$ & $+16.6\%$ & $+12.9\%$ & $+15.0\%$ & $+15.2\%$ \\
-Ensemble-anchor ($\sigma$ 모형 교체) & $+15.1\%$ & $+11.4\%$ & $+15.9\%$ & $+14.2\%$ & $+17.9\%$ \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & $+15.1\%$          & $\mathbf{+17.2\%}$ & $+15.1\%$          & $\mathbf{+16.7\%}$ & $+11.1\%$ \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & $+14.7\%$          & $+15.2\%$          & $+14.7\%$          & $+16.5\%$          & $+11.9\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & $\mathbf{+15.9\%}$ & $+14.0\%$          & $\mathbf{+16.4\%}$ & $+15.7\%$          & $+16.4\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & $+15.3\%$          & $+13.1\%$          & $+15.6\%$          & $+15.3\%$          & $\mathbf{+16.8\%}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+TABLEPLACEHOLDER24
+
+
+
+
+
+TABLEPLACEHOLDER25
+
+
+
+
+
+TABLEPLACEHOLDER26
+
+
 
 \end{document}

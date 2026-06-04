@@ -33,17 +33,17 @@
 
 \section{서론}
 
-마코위츠의 평균-분산 최적화(Mean-Variance Optimization, MVO, Markowitz, 1952) 이래로 포트폴리오 구성 이론은 기대수익률과 위험의 절충을 다루는 방법론을 다수 발전시켜왔다. 그러나 MVO는 입력값의 추정 오차에 극도로 민감하여, 최적해가 표본 외에서 불안정하고 입력값의 작은 변화에도 극단적인 가중치를 산출한다는 한계가 지적되어 왔다. 이러한 한계에 대응하기 위해 수축(shrinkage) 추정(Ledoit and Wolf, 2004), 베이지안 접근 등 다양한 후속 연구가 제안되어 왔다. 그 중 Black and Litterman (1992)이 제안한 블랙-리터만 모형(Black-Litterman, BL) 은 시장 균형 수익률을 사전 분포로 두고 투자자의 견해(뷰, view)를 결합해 사후 기대수익률을 도출하는 베이지안 방법론으로, 추정 오차를 완화하면서도 투자 전문가의 견해를 반영하여 포트폴리오 가중치를 설정할 수 있어 폭넓게 연구되어왔다. 그러나 이 견해가 전문가의 주관적 판단에 의존한다는 한계가 존재한다.
+마코위츠의 평균-분산 최적화(Mean-Variance Optimization, MVO, Markowitz, 1952) 이래로 포트폴리오 구성 이론은 기대수익률과 위험의 절충을 다루는 방법론을 다수 발전시켜왔다. 그러나 MVO는 입력값의 추정 오차에 극도로 민감하여, 최적해가 표본 외에서 불안정하고 입력값의 작은 변화에도 극단적인 가중치를 산출한다는 한계가 지적되어 왔다. 이러한 한계에 대응하기 위해 수축(shrinkage) 추정(Ledoit & Wolf, 2004), 베이지안 접근 등 다양한 후속 연구가 제안되어 왔다. 그 중 Black and Litterman (1992)이 제안한 블랙-리터만 모형(Black-Litterman, BL) 은 시장 균형 수익률을 사전 분포로 두고 투자자의 견해(뷰, view)를 결합해 사후 기대수익률을 도출하는 베이지안 방법론으로, 추정 오차를 완화하면서도 투자 전문가의 견해를 반영하여 포트폴리오 가중치를 설정할 수 있어 폭넓게 연구되어왔다. 그러나 이 견해가 전문가의 주관적 판단에 의존한다는 한계가 존재한다.
 
-앞선 한계를 해결하기 위해, 투자자의 뷰를 머신러닝 기반으로 예측하는 다수의 연구가 진행되어 왔다. BL 프레임워크의 핵심은 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 설정에 있으며, 머신러닝 기반 BL 응용 연구는 주로 $q$를 트리 기반, 신경망, LLM 등의 모형으로 예측하여 뷰로 주입하는 방식을 취해왔다([barua2023using? — bib 누락]; [su2026objective? — bib 누락]; [lee2025llm? — bib 누락]). 이들은 머신러닝 기반 수익률 예측이 BL 프레임워크의 뷰 정량화에 효과적으로 활용될 수 있음을 보였다.
+앞선 한계를 해결하기 위해, 투자자의 뷰를 머신러닝 기반으로 예측하는 다수의 연구가 진행되어 왔다. BL 프레임워크의 핵심은 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 설정에 있으며, 머신러닝 기반 BL 응용 연구는 주로 $q$를 트리 기반, 신경망, LLM 등의 모형으로 예측하여 뷰로 주입하는 방식을 취해왔다(Barua & Sharma, 2023; Su et al., 2026; Lee et al., 2025). 이들은 머신러닝 기반 수익률 예측이 BL 프레임워크의 뷰 정량화에 효과적으로 활용될 수 있음을 보였다.
 
 한편 BL의 뷰는 반드시 기대수익률에 국한될 필요는 없다. 자산의 변동성 또한 포트폴리오 구성에서 중요한 요소이며, Baker et al. (2011), Frazzini and Pedersen (2014), Blitz and van Vliet (2007) 등이 보고한 저위험 이상현상(저베타, 저변동 종목이 위험 대비 우수한 수익을 보이는 현상)은 변동성을 직접 뷰로 활용할 수 있는 근거를 제공한다. 다만, 본 연구는 이상현상 자체의 검증이 아닌, 현상의 존재를 출발점으로 BL 프레임워크 내에서 변동성을 신호로서 효과적으로 활용하는 방법에 초점을 둔다.
 
 변동성 기반의 머신러닝 접근은 수익률 기반 응용 연구 대비 비교적 부족한 영역으로 남아있으며, 이 관점에서 Pyo and Lee (2018)는 인공신경망(Artificial Neural Network, ANN) 기반 변동성 예측을 활용해 종목을 저위험·고위험으로 분류하고, BL 뷰로 결합하는 방법을 KOSPI 200에 적용하여 BL 기반 포트폴리오가 샤프 비율(Sharpe ratio) 0.70을 달성하여 시가총액 비중(0.36) 및 시장 지수(0.59) 대비 우위를 보였다.
 
-그러나 이 방식에는 두 가지 측면에서 추가 검토의 여지를 남긴다. 첫째, ANN 기반의 단순한 변동성 예측은 시계열 구조에 특화된 모형 구조가 아니며, 변동성의 다중 시간 척도(Corsi, 2009)와 순차적 의존성을 모형 차원에서 직접 반영하지 못해 예측 정확도에 한계가 있다. 둘째, BL 프레임워크의 운영 핵심인 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 구성이 저변동성(Low-Volatility) 포트폴리오 성과에 미치는 영향이 체계적으로 검토되지 않았다. 일반적 포트폴리오 구성 연구에서 [demiguel2009optimal? — bib 누락], Maillard et al. (2010) 등은 시가총액 대비 동일 가중(equal-weighted, eq)·리스크 패리티(risk parity, rp)가 포트폴리오 효율성 측면에서 우위를 보일 수 있음을 보고하였다. 또한, 기대수익률 뷰 $q$를 Fama-French 회귀 기반 예측값으로 산출하였으나, 해당 예측값의 부호와 크기가 저변동 포트폴리오의 성과에 미치는 영향에 대해서는 체계적인 비교·분석이 미비한 실정이다. 
+그러나 이 방식에는 두 가지 측면에서 추가 검토의 여지를 남긴다. 첫째, ANN 기반의 단순한 변동성 예측은 시계열 구조에 특화된 모형 구조가 아니며, 변동성의 다중 시간 척도(Corsi, 2009)와 순차적 의존성을 모형 차원에서 직접 반영하지 못해 예측 정확도에 한계가 있다. 둘째, BL 프레임워크의 운영 핵심인 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 구성이 저변동성(Low-Volatility) 포트폴리오 성과에 미치는 영향이 체계적으로 검토되지 않았다. 일반적 포트폴리오 구성 연구에서 DeMiguel et al. (2009), Maillard et al. (2010) 등은 시가총액 대비 동일 가중(equal-weighted, eq)·리스크 패리티(risk parity, rp)가 포트폴리오 효율성 측면에서 우위를 보일 수 있음을 보고하였다. 또한, 기대수익률 뷰 $q$를 Fama-French 회귀 기반 예측값으로 산출하였으나, 해당 예측값의 부호와 크기가 저변동 포트폴리오의 성과에 미치는 영향에 대해서는 체계적인 비교·분석이 미비한 실정이다. 
 
-본 연구는 위 두 영역에 대해 다음과 같이 기여한다. 먼저, LSTM(Long Short-Term Memory)과 HAR(Heterogeneous Autoregressive) 앙상블 모형을 적용하여 변동성의 다중 시간 척도와 순차적 의존성을 동시에 반영하는 예측 구조를 제안한다. 다음으로, BL 프레임워크의 네 가지 핵심 슬롯($\mathbf{p}, q, \omega$, $\mathbf{w}_{mkt}$)에 걸쳐 90개 조합을 체계적으로 탐색함으로써, 저변동 전략의 효과를 극대화할 수 있는 최적의 포트폴리오 슬롯 설정을 제시한다. 이는 비시계열 모형과 고정된 슬롯 구성에 의존했던 선행 연구(Pyo and Lee, 2018)를 예측 모형과 포트폴리오 구조 설계라는 두 가지 축 모두에서 유의미하게 확장하였다는 점에서 차별성을 갖는다.
+본 연구는 위 두 영역에 대해 다음과 같이 기여한다. 먼저, LSTM(Long Short-Term Memory)과 HAR(Heterogeneous Autoregressive) 앙상블 모형을 적용하여 변동성의 다중 시간 척도와 순차적 의존성을 동시에 반영하는 예측 구조를 제안한다. 다음으로, BL 프레임워크의 네 가지 핵심 슬롯($\mathbf{p}, q, \omega$, $\mathbf{w}_{mkt}$)에 걸쳐 90개 조합을 체계적으로 탐색함으로써, 저변동 전략의 효과를 극대화할 수 있는 최적의 포트폴리오 슬롯 설정을 제시한다. 이는 비시계열 모형과 고정된 슬롯 구성에 의존했던 선행 연구(Pyo & Lee, 2018)를 예측 모형과 포트폴리오 구조 설계라는 두 가지 축 모두에서 유의미하게 확장하였다는 점에서 차별성을 갖는다.
 
 본 연구는 다음과 같은 순서로 구성된다. 2절에서는 변동성 예측 및 BL 응용에 관한 선행 연구를 검토하고, 3절에서는 본 연구의 변동성 예측 모형과 BL 프레임워크의 구조 및 슬롯 구성을 기술한다. 4절에서는 실증 분석 결과를 제시하고, 마지막 5절에서는 연구 결론과 한계점을 논의한다.
 
@@ -52,7 +52,7 @@
 \subsection{블랙-리터만}
 \label{subsec:bl_review}
 
-블랙-리터만 모형(Black–Litterman, BL, Black and Litterman, 1992) 은 시장 균형 수익률과 투자자의 뷰를 베이지안 방식으로 결합하는 포트폴리오 최적화 프레임워크로, MVO가 갖는 추정 오차 민감성을 완화하는 데 효과적이다. 모형은 이차 효용 최대화 문제의 역산으로 도출되는 시장 균형 초과수익률 벡터 $\boldsymbol{\pi}$에서 출발한다.
+블랙-리터만 모형(Black–Litterman, BL, Black & Litterman, 1992) 은 시장 균형 수익률과 투자자의 뷰를 베이지안 방식으로 결합하는 포트폴리오 최적화 프레임워크로, MVO가 갖는 추정 오차 민감성을 완화하는 데 효과적이다. 모형은 이차 효용 최대화 문제의 역산으로 도출되는 시장 균형 초과수익률 벡터 $\boldsymbol{\pi}$에서 출발한다.
 
 \begin{align}
     & \boldsymbol{\pi} = \lambda\boldsymbol{\Sigma}\mathbf{w}_{mkt} \qquad(1)\end{align}
@@ -90,7 +90,7 @@ $\tau$는 사전 분포의 불확실성을 조절하며, He and Litterman (1999)
 \subsection{변동성 예측 모형}
 \label{subsec:vol_pred_review}
 
-금융 자산의 변동성은 시계열적으로 특정 구조가 지속되는 '변동성 군집성(volatility clustering)'과 시차가 길어져도 자기상관이 천천히 감소하는 '장기 의존성(long-memory)'을 보인다([cont2001? — bib 누락]). 본 절에서는 이러한 변동성 시계열 구조에 널리 활용되어 온 선형 모형인 HAR(Müller et al., 1997)과 비선형 시퀀스 학습에 특화된 딥러닝 모형인 LSTM(Hochreiter and Schmidhuber, 1997)의 구조를 기술한다. 아울러 서로 다른 가정에 기반한 두 모형의 예측값을 결합함으로써 동적 적응성(dynamic adaptability)을 확보하는 앙상블 접근법의 이론적 배경을 정리한다.
+금융 자산의 변동성은 시계열적으로 특정 구조가 지속되는 '변동성 군집성(volatility clustering)'과 시차가 길어져도 자기상관이 천천히 감소하는 '장기 의존성(long-memory)'을 보인다(Cont, 2001). 본 절에서는 이러한 변동성 시계열 구조에 널리 활용되어 온 선형 모형인 HAR(Müller et al., 1997)과 비선형 시퀀스 학습에 특화된 딥러닝 모형인 LSTM(Hochreiter & Schmidhuber, 1997)의 구조를 기술한다. 아울러 서로 다른 가정에 기반한 두 모형의 예측값을 결합함으로써 동적 적응성(dynamic adaptability)을 확보하는 앙상블 접근법의 이론적 배경을 정리한다.
 
 \subsubsection{HAR}
 \label{subsubsec:har_review}
@@ -108,7 +108,7 @@ Corsi (2009)은 이를 단순 선형 회귀 형태로 구현한 HAR 모형을 �
 
 순환신경망(Recurrent Neural Network, RNN, Rumelhart et al., 1986)은 시퀀스 데이터의 시간적 의존성을 학습하기 위해 은닉 상태(hidden state) $h_t$를 시점 간 재귀적으로 전파하는 구조를 갖는다. 그러나 RNN은 역전파 과정에서 기울기가 시간 축을 따라 지수적으로 감소하거나(기울기 소실, vanishing gradient) 지수적으로 증가하는(기울기 폭주, exploding gradient) 문제로 인해, 긴 시퀀스 학습이 실질적으로 어렵다는 한계가 지적되어 왔다.
 
-LSTM(Hochreiter and Schmidhuber, 1997)은 이러한 한계를 해결하기 위해 설계된 구조이다. LSTM의 핵심 아이디어는 은닉 상태와 별도로 셀 상태(cell state) $c_t$를 두고, [0, 1] 구간의 출력값을 갖는 시그모이드 활성화 함수를 통해 셀 상태의 정보를 선택적으로 보존·삭제·갱신하는 것이다. Gers et al. (2000)이 망각 게이트(forget gate)를 도입한 이후, LSTM은 망각·입력·출력 게이트 및 후보 기억 상태(candidate cell state)로 구성된 표준 구조로 정착하였다.
+LSTM(Hochreiter & Schmidhuber, 1997)은 이러한 한계를 해결하기 위해 설계된 구조이다. LSTM의 핵심 아이디어는 은닉 상태와 별도로 셀 상태(cell state) $c_t$를 두고, [0, 1] 구간의 출력값을 갖는 시그모이드 활성화 함수를 통해 셀 상태의 정보를 선택적으로 보존·삭제·갱신하는 것이다. Gers et al. (2000)이 망각 게이트(forget gate)를 도입한 이후, LSTM은 망각·입력·출력 게이트 및 후보 기억 상태(candidate cell state)로 구성된 표준 구조로 정착하였다.
 
 \begin{figure}[!ht]
 \centering
@@ -127,14 +127,14 @@ o_t &= \sigma(W_o [h_{t-1}, x_t] + b_o) \qquad(12)\\
 h_t &= o_t \odot \tanh(c_t) \qquad(13)\end{align}
 여기서 $f_t$, $i_t$, $o_t$는 각각 망각·입력·출력 게이트, $\tilde{c}_t$는 후보 기억 상태를 나타낸다. $\sigma(\cdot)$은 시그모이드 활성화 함수, $\tanh(\cdot)$는 하이퍼볼릭 탄젠트 활성화 함수, $\odot$ 은 원소별 곱(Hadamard product)이다. 또한 \(W\)와 \(b\)는 각 구성 요소의 가중치 행렬과 편향 벡터를 나타내며, \([h_{t-1}, x_t]\)는 은닉 상태와 입력 벡터의 결합(concatenation)을 의미한다. 식~(11)의 망각 게이트 $f_t$가 1에 가까울 때 과거 셀 상태가 보존되고 0에 가까울 때 폐기되어, 시계열 장기 의존 구조를 선택적으로 보존하거나 제거할 수 있다.
 
-LSTM은 자연어 처리, 음성 인식 등 시퀀스 학습 문제에서 폭넓게 활용되어 왔으며, 금융 변동성 예측에 적용한 연구들도 다수 보고되었다(Bucci, 2020; Kim and Won, 2018). 해당 연구들은 LSTM이 변동성 시계열의 비선형 구조를 학습하여 예측에 유의미하게 활용될 수 있음을 보였다.
+LSTM은 자연어 처리, 음성 인식 등 시퀀스 학습 문제에서 폭넓게 활용되어 왔으며, 금융 변동성 예측에 적용한 연구들도 다수 보고되었다(Bucci, 2020; Kim & Won, 2018). 해당 연구들은 LSTM이 변동성 시계열의 비선형 구조를 학습하여 예측에 유의미하게 활용될 수 있음을 보였다.
 
 \subsubsection{예측 앙상블}
 \label{subsubsec:ens_review}
 
 각 모형의 예측 결과를 결합하여 단일 모형 대비 오차를 줄이고자 하는 예측 결합(forecast combination, 이하 앙상블)은 Bates and Granger (1969) 이래로 활발히 연구되어 왔다. 두 예측의 가중 평균이 개별 예측보다 작은 평균제곱오차(Mean Squared Error, MSE)를 갖기 위한 이론적 조건을 분석한 이 연구는, 두 예측 오차 간의 상관관계가 낮을수록 결합을 통한 분산 감소 효과가 커진다는 점을 확인하였다.
 
-이후의 연구는 Bates and Granger (1969)이 제안한 역분산 가중을 다양한 오차 척도로 확장한 변형들을 발전시켜 왔으며([timmermann2006forecast? — bib 누락]), 본 연구에서 채택하는 성과 가중(performance-weighted) 결합 방식 역시 이러한 발전 형태 중 하나이다. 구체적으로 각 모형의 과거 예측 오차에 반비례하도록 가중치를 부여하는 적응적 특성을 지닌다.
+이후의 연구는 Bates and Granger (1969)이 제안한 역분산 가중을 다양한 오차 척도로 확장한 변형들을 발전시켜 왔으며(Timmermann, 2006), 본 연구에서 채택하는 성과 가중(performance-weighted) 결합 방식 역시 이러한 발전 형태 중 하나이다. 구체적으로 각 모형의 과거 예측 오차에 반비례하도록 가중치를 부여하는 적응적 특성을 지닌다.
 
 \begin{equation}
 w_i = \frac{1/e_i}{\sum_{j=1}^{M} 1/e_j} \qquad(14)\end{equation}
@@ -166,7 +166,7 @@ Pyo and Lee (2018)는 KOSPI 200 종목 각각에 대해 직전 10개월의 월�
     -\dfrac{\mathrm{mcap}_i}{\sum_{j \in \mathcal{H}} \mathrm{mcap}_j}, & \text{종목 } i \in \mathcal{H} \text{ (고변동 그룹, 상위 30\%)}, \\[6pt]
     \phantom{+}0,                & \text{otherwise}.
 \end{cases} \qquad(15)\end{equation}
-여기서 $\mathrm{mcap}_i$는 종목 $i$의 시가총액이며, 각 그룹 내 시가총액 합계로 정규화하여 롱(Long) 측 합은 $+1$, 숏(Short) 측 합은 $-1$이 되는 자기자금조달(self-financing) 구조를 충족한다. 기대수익률 뷰 $q$는 Fama-French 3팩터 모형(FF3, (Fama and French, 1993))의 회귀 추정치와 $\mathbf{p}$의 결합으로 산출된다.
+여기서 $\mathrm{mcap}_i$는 종목 $i$의 시가총액이며, 각 그룹 내 시가총액 합계로 정규화하여 롱(Long) 측 합은 $+1$, 숏(Short) 측 합은 $-1$이 되는 자기자금조달(self-financing) 구조를 충족한다. 기대수익률 뷰 $q$는 Fama-French 3팩터 모형(FF3, (Fama & French, 1993))의 회귀 추정치와 $\mathbf{p}$의 결합으로 산출된다.
 
 \begin{align}
 \hat{r}_i &= \alpha + \beta_{\text{mkt}}(r_{\text{mkt}} - r_f)
@@ -388,7 +388,7 @@ $q$는 저변동-고변동 그룹 간 기대수익률 스프레드로, 본 연�
 \end{equation}
 여기서 $\Delta\hat{\sigma}_t = \frac{1}{|H|}\sum_{i\in H}\hat{\sigma}_{i,t} - \frac{1}{|L|}\sum_{i\in L}\hat{\sigma}_{i,t}$이며, $H, L$의 정의에 의해 $\Delta\hat{\sigma}_t > 0$이 보장된다. 이 값은 매 리밸런싱 시점마다 시장 상황에 따라 크게 달라질 수 있어, 훈련 기간 내 $\Delta\hat{\sigma}_t$ 시계열의 중앙값으로 나누어 정규화함으로써 위기 구간 등 극단적으로 커지는 시점이 기준값에 미치는 영향을 억제하였다.
 
-\textbf{팩터 모형 기반 슬롯.} Pyo and Lee (2018)는 FF3 회귀로 $q$를 산출한다는 방향만 제시하고 팩터 프리미엄 산정 방식의 세부는 명시하지 않아, 본 연구는 단기 추정의 불안정성을 피하기 위해 훈련 윈도우(60개월) 내 팩터 평균을 다음 달 기대 팩터 프리미엄으로 사용하는 방식 (Fama and MacBeth, 1973; [cochrane2005? — bib 누락]) 으로 구현하였다. 종목별 FF3 롤링 회귀로 추정한 기대수익률 $\hat{r}_i$와 $\mathbf{p}$ 벡터의 결합으로 $q$를 산출하며, 훈련 기간 내 데이터만 사용하므로 look-ahead bias가 없다. 이 구현이 Pyo and Lee (2018)의 FF3 방식에 해당하는 본 연구의 앵커 슬롯이다.
+\textbf{팩터 모형 기반 슬롯.} Pyo and Lee (2018)는 FF3 회귀로 $q$를 산출한다는 방향만 제시하고 팩터 프리미엄 산정 방식의 세부는 명시하지 않아, 본 연구는 단기 추정의 불안정성을 피하기 위해 훈련 윈도우(60개월) 내 팩터 평균을 다음 달 기대 팩터 프리미엄으로 사용하는 방식 (Fama & MacBeth, 1973; Cochrane, 2005) 으로 구현하였다. 종목별 FF3 롤링 회귀로 추정한 기대수익률 $\hat{r}_i$와 $\mathbf{p}$ 벡터의 결합으로 $q$를 산출하며, 훈련 기간 내 데이터만 사용하므로 look-ahead bias가 없다. 이 구현이 Pyo and Lee (2018)의 FF3 방식에 해당하는 본 연구의 앵커 슬롯이다.
 \begin{equation}
   q^{\mathrm{ff3}} = \mathbf{p}\hat{\mathbf{r}}, \qquad
   \hat{r}_i = \hat{\alpha}_i + \hat{\beta}_i^{\mathrm{mkt}}\bar{f}_{\mathrm{mkt}} + \hat{\beta}_i^{\mathrm{SMB}}\bar{f}_{\mathrm{SMB}} + \hat{\beta}_i^{\mathrm{HML}}\bar{f}_{\mathrm{HML}},
@@ -400,7 +400,7 @@ $q$는 저변동-고변동 그룹 간 기대수익률 스프레드로, 본 연�
 $\omega$는 사전 균형 수익률 대비 투자자 뷰의 신뢰도를 결정하며, 본 연구는 다음 두 가지 설정을 비교한다.
 
 \begin{itemize}
-  \item $\omega^{\mathrm{he}}$ (He-Litterman 방식): 뷰 포트폴리오의 사전 분산에 비례하여 불확실성을 설정하는 BL 문헌의 표준 방식이다 (He and Litterman, 1999).
+  \item $\omega^{\mathrm{he}}$ (He-Litterman 방식): 뷰 포트폴리오의 사전 분산에 비례하여 불확실성을 설정하는 BL 문헌의 표준 방식이다 (He & Litterman, 1999).
     \begin{equation}
       \omega^{\mathrm{he}} = \tau\mathbf{p}\boldsymbol{\Sigma}\mathbf{p}^\top.
     \end{equation}
@@ -420,7 +420,7 @@ $\omega$는 사전 균형 수익률 대비 투자자 뷰의 신뢰도를 결정�
 포트폴리오 비중은 월별 리밸런싱 시점마다 시간 순서를 따라 산출하는 Walk-Forward 슬라이딩 방식으로 추정한다. 변동성 예측 단계(3.2절)와 달리 현재 시점의 가중치를 산출하므로, 별도의 퍼징·엠바고 구간 없이, 매 리밸런싱 시점에서 직전 60개월 데이터를 사용한다. 각 리밸런싱 시점 $t$(월 1회)에서 다음 절차를 수행한다.
 
 \begin{enumerate}
-  \item 직전 60개월 일별 로그 수익률에 Ledoit-Wolf 수축 추정량 (Ledoit and Wolf, 2004)을 적용하여 공분산 행렬 $\boldsymbol{\Sigma}_t$를 산출한다. 이는 BL 프레임워크의 사전·사후 분포 계산에 사용되며, 변동성 예측 모형의 출력($\hat{\sigma}_{i,t}$)과는 독립적으로 산출된다.
+  \item 직전 60개월 일별 로그 수익률에 Ledoit-Wolf 수축 추정량 (Ledoit & Wolf, 2004)을 적용하여 공분산 행렬 $\boldsymbol{\Sigma}_t$를 산출한다. 이는 BL 프레임워크의 사전·사후 분포 계산에 사용되며, 변동성 예측 모형의 출력($\hat{\sigma}_{i,t}$)과는 독립적으로 산출된다.
   \item 해당 시점의 시장 비중 $\mathbf{w}_{mkt,t}$와 고정 위험회피도 $\lambda = 2.5$로 식 (1)에 따라 균형 수익률 $\boldsymbol{\pi}_t$를 계산한다.
   \item 앙상블 모형(또는 ANN 기준 모형)의 예측 변동성 $\hat{\sigma}_{i,t}$로 $\mathbf{p}_t$를 구성하고, 슬롯 설정에 따라 $q_t$와 $\omega_t$를 산출한다.
   \item 식 (4), (5)에 따라 BL 사후 분포의 평균 $\boldsymbol{\mu}_{BL,t}$와 공분산 $\boldsymbol{\Sigma}_{BL,t}$를 계산한다.
@@ -434,7 +434,7 @@ $\omega$는 사전 균형 수익률 대비 투자자 뷰의 신뢰도를 결정�
 
 전체 분석 기간은 2010년 1월부터 2025년 12월까지(192개월)이며, 시장 국면에 따라 성과가 크게 달라질 수 있으므로 전체 기간 평가와 국면별 성과 분해를 병행한다.
 
-구체적인 국면 분류 과정은 부록 A에 상세히 기술되어 있으며, 본 연구는 Hidden Markov Model(HMM, [hamilton1989new? — bib 누락]) 기반의 통계적 구조전환점 탐지와 금융 이벤트 도메인 지식을 결합하여 네 개의 비중첩 구간을 식별하였다(표 1).
+구체적인 국면 분류 과정은 부록 A에 상세히 기술되어 있으며, 본 연구는 Hidden Markov Model(HMM, Hamilton, 1989) 기반의 통계적 구조전환점 탐지와 금융 이벤트 도메인 지식을 결합하여 네 개의 비중첩 구간을 식별하였다(표 1).
 
 각 국면 및 전체 기간에 대한 성과지표로는 샤프 비율, Sortino 비율, 최대 낙폭(Maximum Drawdown, MDD)을 산출한다. 이와 같은 국면별 성과 분해를 통해 앙상블 기반 BL 포트폴리오의 ANN 대비 우위가 특정 시장 국면에 의존하는지, 혹은 전 국면에 걸쳐 일관되게 유지되는지를 체계적으로 검증한다. 이를 위해 앙상블 모형과 ANN 기준 모형은 동일한 90개 슬롯 조합에 대해 1:1 대응 비교하며, 슬롯 구성은 두 모형 간 완전히 동일하게 유지한다.
 
@@ -637,34 +637,11 @@ TABLEPLACEHOLDER5
 
 본 연구는 특정 단일 슬롯만을 최적 모형으로 권장하지 않으며, 운용 목표에 따라 선택 가능한 두 가지 옵션을 제안한다. 모든 시장 국면에서 저변동 뷰를 일관되게 유지하는 방어형 옵션(Ensemble-defensive, $q^{\mathrm{lam}}$)과, $q^{\mathrm{ff3}}$의 크기와 부호가 시장 국면에 따라 변동하는 국면 적응형 옵션(Ensemble-adaptive, $q^{\mathrm{ff3}}$)이다. 각 옵션은 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$ 두 변형으로 운용할 수 있으며, 두 변형은 후술하듯 거의 동등한 성과를 보인다.
 
-\begin{table}[ht]
-\centering
-\caption{<표 6> 벤치마크 성능 비교 — 샤프 비율 $\times$ 5 기간. Ensemble 슬롯은 모두 $\mathbf{w}_{mkt} = \mathbf{w}^{\mathrm{mcap}}$ 고정, $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$ 두 변형을 비교한다. MDD, Sortino 등 보조 지표는 부록~부록 E 참조.}
-\label{tab:benchmark_sharpe}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & 0.93 & 0.81 & 1.23 & 0.61 & 1.19 \\
-$1/N$ (equal-weight)               & 0.86 & 0.78 & 1.23 & 0.70 & 0.47 \\
-Risk Parity ($1/\sigma$)           & 0.89 & 0.91 & 1.28 & 0.67 & 0.45 \\
-ANN-anchor (Pyo and Lee, 2018)         & 0.95 & 1.06 & 1.08 & 0.85 & 0.71 \\
-Ensemble-anchor ($\sigma$ 모형 교체) & 0.95 & 0.74 & 1.29 & 0.70 & 0.94 \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$)
-                                   & 1.07 & \textbf{1.08} & 1.32 & \textbf{0.96} & 0.64 \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$)
-                                   & 1.04 & 0.98 & 1.28 & 0.95 & 0.71 \\
-\textbf{Ensemble-adaptive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$)
-                                   & \textbf{1.10} & 0.87 & \textbf{1.42} & 0.89 & 1.07 \\
-\textbf{Ensemble-adaptive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$)
-                                   & 1.05 & 0.81 & 1.34 & 0.87 & \textbf{1.10} \\
-\bottomrule
-\end{tabular}
-\end{table}
+
+
+TABLEPLACEHOLDER6
+
+
 
 표~6에서 네 가지 앙상블 슬롯은 모두 외부 벤치마크와 BL 앵커 슬롯의 성과를 상회한다. 전체 분석 기간의 샤프 비율은 Ensemble-defensive가 $\mathbf{p}^{\mathrm{eq}}$ 1.07, $\mathbf{p}^{\mathrm{rp}}$ 1.04를 기록하였고, Ensemble-adaptive가 $\mathbf{p}^{\mathrm{eq}}$ 1.10, $\mathbf{p}^{\mathrm{rp}}$ 1.05를 나타냈다. 이는 $\mathbf{p}$ 벡터 변형 선택과 무관하게 전통적 벤치마크인 SPY(0.93), $1/N$ 동일 가중(0.86), Risk Parity(0.89) 및 ANN-anchor(0.95) 성과를 모두 능가하는 수치이다. MDD 측면에서도 네 가지 Ensemble 슬롯은 SPY 및 ANN-anchor 대비 더 얕은 손실을 기록하며, 특히 Ensemble-defensive 두 변형의 방어력이 가장 우수하다. 이와 관련한 상세 수치는~부록 E에 수록하였다.
 
@@ -741,49 +718,65 @@ LSTM-HAR 앙상블 모형은 ANN 모형 대비 변동성 예측 정확도(RMSE, 
 
 [국외 문헌]
 
-Baker, M., Bradley, B., & Wurgler, J. (2011). Benchmarks as limits to arbitrage: Understanding the low-volatility anomaly. \textit{Financial Analysts Journal}, 67(1), 40–54.
+Baker, M., Bradley, B., & Wurgler, J. (2011). Benchmarks as limits to arbitrage: Understanding the low-volatility anomaly. \textit{Financial Analysts Journal, 67}(1), 40–54.
 
-Bates, J. M., & Granger, C. W. (1969). The combination of forecasts. \textit{Journal of the operational research society}, 20(4), 451–468.
+Barua, R., & Sharma, A. K. (2023). Using fear, greed and machine learning for optimizing global portfolios: A Black-Litterman approach. \textit{Finance Research Letters, 58}, 104515.
 
-Black, F., & Litterman, R. (1992). Global portfolio optimization. \textit{Financial Analysts Journal}, 48(5), 28–43.
+Bates, J. M., & Granger, C. W. (1969). The combination of forecasts. \textit{Journal of the Operational Research Society, 20}(4), 451–468.
 
-Blitz, D. C., & van Vliet, P. (2007). The volatility effect: Lower risk without lower return. \textit{The Journal of Portfolio Management}, 34(1), 102–113.
+Black, F., & Litterman, R. (1992). Global portfolio optimization. \textit{Financial Analysts Journal, 48}(5), 28–43.
 
-Bucci, A. (2020). Realized volatility forecasting with neural networks. \textit{Journal of Financial Econometrics}, 18(3), 502–531.
+Blitz, D. C., & van Vliet, P. (2007). The volatility effect: Lower risk without lower return. \textit{The Journal of Portfolio Management, 34}(1), 102–113.
 
-Corsi, F. (2009). A simple approximate long-memory model of realized volatility. \textit{Journal of Financial Econometrics}, 7(2), 174–196. https://doi.org/10.1093/jjfinec/nbp001
+Bucci, A. (2020). Realized volatility forecasting with neural networks. \textit{Journal of Financial Econometrics, 18}(3), 502–531.
 
-Fama, E. F., & French, K. R. (1993). Common risk factors in the returns on stocks and bonds. \textit{Journal of financial economics}, 33(1), 3–56.
+Cochrane, J. H. (2005). \textit{Asset Pricing} (Revised ed.). Princeton University Press.
 
-Fama, E. F., & MacBeth, J. D. (1973). Risk, return, and equilibrium: Empirical tests. \textit{Journal of political economy}, 81(3), 607–636.
+Cont, R. (2001). Empirical properties of asset returns: stylized facts and statistical issues. \textit{Quantitative Finance, 1}(2), 223–236.
 
-Frazzini, A., & Pedersen, L. H. (2014). Betting against beta. \textit{Journal of Financial Economics}, 111(1), 1–25.
+Corsi, F. (2009). A simple approximate long-memory model of realized volatility. \textit{Journal of Financial Econometrics, 7}(2), 174–196. https://doi.org/10.1093/jjfinec/nbp001
 
-Gers, F. A., Schmidhuber, J., & Cummins, F. (2000). Learning to forget: Continual prediction with LSTM. \textit{Neural Computation}, 12(10), 2451–2471.
+DeMiguel, V., Garlappi, L., & Uppal, R. (2009). Optimal versus naive diversification: How inefficient is the 1/N portfolio strategy?. \textit{The Review of Financial Studies, 22}(5), 1915–1953.
+
+Fama, E. F., & French, K. R. (1993). Common risk factors in the returns on stocks and bonds. \textit{Journal of Financial Economics, 33}(1), 3–56.
+
+Fama, E. F., & MacBeth, J. D. (1973). Risk, return, and equilibrium: Empirical tests. \textit{Journal of Political Economy, 81}(3), 607–636.
+
+Frazzini, A., & Pedersen, L. H. (2014). Betting against beta. \textit{Journal of Financial Economics, 111}(1), 1–25.
+
+Gers, F. A., Schmidhuber, J., & Cummins, F. (2000). Learning to forget: Continual prediction with LSTM. \textit{Neural Computation, 12}(10), 2451–2471.
+
+Hamilton, J. D. (1989). A new approach to the economic analysis of nonstationary time series and the business cycle. \textit{Econometrica: Journal of the Econometric Society}, 357–384.
 
 He, G., & Litterman, R. (1999). The intuition behind Black-Litterman model portfolios. Goldman Sachs Investment Management Research.
 
-Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. \textit{Neural Computation}, 9(8), 1735–1780. https://doi.org/10.1162/neco.1997.9.8.1735
+Hochreiter, S., & Schmidhuber, J. (1997). Long short-term memory. \textit{Neural Computation, 9}(8), 1735–1780. https://doi.org/10.1162/neco.1997.9.8.1735
 
-Kim, H. Y., & Won, C. H. (2018). Forecasting the volatility of stock price index: A hybrid model integrating LSTM with multiple GARCH-type models. \textit{Expert Systems with Applications}, 103, 25–37.
+Kim, H. Y., & Won, C. H. (2018). Forecasting the volatility of stock price index: A hybrid model integrating LSTM with multiple GARCH-type models. \textit{Expert Systems with Applications, 103}, 25–37.
 
-Ledoit, O., & Wolf, M. (2004). A well-conditioned estimator for large-dimensional covariance matrices. \textit{Journal of Multivariate Analysis}, 88(2), 365–411.
+Ledoit, O., & Wolf, M. (2004). A well-conditioned estimator for large-dimensional covariance matrices. \textit{Journal of Multivariate Analysis, 88}(2), 365–411.
+
+Lee, Y., Kim, Y., Kim, J., Kim, S., & Lee, Y. (2025). LLM-Enhanced Black-Litterman Portfolio Optimization. \textit{ArXiv Preprint ArXiv:2504.14345}.
 
 López de Prado, M. (2018). \textit{Advances in Financial Machine Learning}. John Wiley & Sons.
 
-Maillard, S., Roncalli, T., & Te\"iletche, J. (2010). The properties of equally weighted risk contribution portfolios. \textit{The Journal of Portfolio Management}, 36(4), 60–70.
+Maillard, S., Roncalli, T., & Te\"iletche, J. (2010). The properties of equally weighted risk contribution portfolios. \textit{The Journal of Portfolio Management, 36}(4), 60–70.
 
-Markowitz, H. (1952). Portfolio selection. \textit{The Journal of Finance}, 7(1), 77–91. https://doi.org/10.1111/j.1540-6261.1952.tb01525.x
+Markowitz, H. (1952). Portfolio selection. \textit{The Journal of Finance, 7}(1), 77–91. https://doi.org/10.1111/j.1540-6261.1952.tb01525.x
 
-Müller, U. A., Dacorogna, M. M., Davé, R. D., Olsen, R. B., Pictet, O. V., & von Weizsäcker, J. E. (1997). Volatilities of different time resolutions—Analyzing the dynamics of market components. \textit{Journal of Empirical Finance}, 4(2–3), 213–239.
+Müller, U. A., Dacorogna, M. M., Davé, R. D., Olsen, R. B., Pictet, O. V., & von Weizsäcker, J. E. (1997). Volatilities of different time resolutions—Analyzing the dynamics of market components. \textit{Journal of Empirical Finance, 4}(2–3), 213–239.
 
-Pyo, S., & Lee, J. (2018). Exploiting the low-risk anomaly using machine learning to enhance the Black-Litterman framework. \textit{Pacific-Basin Finance Journal}, 51, 1–12.
+Pyo, S., & Lee, J. (2018). Exploiting the low-risk anomaly using machine learning to enhance the Black-Litterman framework. \textit{Pacific-Basin Finance Journal, 51}, 1–12.
 
-Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986). Learning representations by back-propagating errors. \textit{nature}, 323(6088), 533–536.
+Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986). Learning representations by back-propagating errors. \textit{Nature, 323}(6088), 533–536.
 
-Sortino, F. A., & Price, L. N. (1994). Performance measurement in a downside risk framework. \textit{The Journal of Investing}, 3(3), 59–64.
+Sortino, F. A., & Price, L. N. (1994). Performance measurement in a downside risk framework. \textit{The Journal of Investing, 3}(3), 59–64.
 
-Whaley, R. E. (2009). Understanding the VIX. \textit{Journal of Portfolio Management}, 35(3), 98–105.
+Su, X., Lu, K., & Yen, J. (2026). Objective Black-Litterman views through deep learning: A novel hybrid model for enhanced portfolio returns. \textit{Expert Systems with Applications, 295}, 128868.
+
+Timmermann, A. (2006). Forecast Combinations. In G. Elliott, C. W. J. Granger, & A. Timmermann (Eds.), \textit{Handbook of Economic Forecasting} (Vol. 1, pp. 135–196). Elsevier.
+
+Whaley, R. E. (2009). Understanding the VIX. \textit{Journal of Portfolio Management, 35}(3), 98–105.
 
 
 \appendix
@@ -795,7 +788,7 @@ Whaley, R. E. (2009). Understanding the VIX. \textit{Journal of Portfolio Manage
 
 \section{HMM 기반 시장 국면 분류}\label{app:hmm}
 
-Hidden Markov Model(HMM, [hamilton1989new? — bib 누락])은 관측 불가능한 잠재 상태인 시장 국면(Regime)이 확률적으로 전이하며 관측 데이터를 생성한다고 가정하는 통계 모형으로, 시장 국면처럼 직접 관측되지 않는 구조적 상태를 데이터를 기반으로 식별하는 데 적합하다. 본 연구는 HMM을 활용하여 분석 기간(2010-2025)의 시장 국면을 사후적으로 정의하고, 이를 포트폴리오 성과 분해의 기준으로 활용한다.
+Hidden Markov Model(HMM, Hamilton, 1989)은 관측 불가능한 잠재 상태인 시장 국면(Regime)이 확률적으로 전이하며 관측 데이터를 생성한다고 가정하는 통계 모형으로, 시장 국면처럼 직접 관측되지 않는 구조적 상태를 데이터를 기반으로 식별하는 데 적합하다. 본 연구는 HMM을 활용하여 분석 기간(2010-2025)의 시장 국면을 사후적으로 정의하고, 이를 포트폴리오 성과 분해의 기준으로 활용한다.
 
 \subsection*{A1 데이터 및 학습 기간}
 
@@ -941,7 +934,7 @@ R4 & 2023-07 $\sim$ 2025-12 (30개월) & 약 630일   & AI 주도 랠리 (정상
 평가 지표는 다음 세 가지를 사용한다.
 \begin{itemize}
   \item \textbf{Sharpe 비율}: 평균 초과수익을 표준편차로 나눈 위험 조정 수익률. 클수록 우위.
-  \item \textbf{Sortino 비율}: 샤프 비율의 하방 변동성 버전으로, 분모를 하방 표준편차로 대체한다(Sortino and Price, 1994). 하락 변동성만 페널티로 반영하며 클수록 우위.
+  \item \textbf{Sortino 비율}: 샤프 비율의 하방 변동성 버전으로, 분모를 하방 표준편차로 대체한다(Sortino & Price, 1994). 하락 변동성만 페널티로 반영하며 클수록 우위.
   \item \textbf{최대낙폭 (MDD)}: 누적 고점 대비 최대 손실 폭(\%). 음수가 손실이므로 클수록(0 에 가까울수록) 우위.
 \end{itemize}
 따라서 모든 표의 $\Delta > 0$ 셀(녹색)은 앙상블이 ANN 대비 위험 조정 수익 또는 손실 폭 측면에서 우위인 경우이다.
@@ -1149,80 +1142,22 @@ R4 국면에서 스프레드가 음수로 전환되는 조합은 $(\mathbf{p}^{\
 
 4.4절(벤치마크 성능 비교)에서 보고한 샤프 비율 결과(표~6)에 대응하여, 동일한 슬롯과 5개 기간(All, R1 회복, R2 확장, R3 위기, R4 정상화)에 대한 보조 지표 3종을 첨부한다.  표~24는 Sortino 비율, 표~25 는 최대낙폭 (MDD), 표~26은 연환산 수익률을 보고하며, 각 표에서 4개 앙상블 슬롯 중 컬럼별 최우수 값을 굵게 표시한다. Sortino 비율과 연환산 수익률은 클수록, MDD는 0에 가까울수록 우위이다.
 
-\begin{table}[ht]
-\centering
-\caption{<표 24> 벤치마크 성능 비교 — Sortino 비율 $\times$ 5기간. 4개 앙상블 슬롯 중 컬럼별 최대값 굵게 표시.}
-\label{tab:benchmark_sortino}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & 1.38 & 1.41 & 1.66 & 1.06 & 2.36 \\
-$1/N$ (equal-weight)               & 1.21 & 1.32 & 1.47 & 1.08 & 0.88 \\
-Risk Parity ($1/\sigma$)           & 1.25 & 1.72 & 1.50 & 1.05 & 0.81 \\
-ANN-anchor (Pyo and Lee, 2018)         & 1.34 & 1.56 & 1.36 & 1.60 & 0.88 \\
-Ensemble-anchor ($\sigma$ 모형 교체) & 1.32 & 1.19 & 1.48 & 1.17 & 1.51 \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & \textbf{1.66} & \textbf{1.78} & \textbf{1.82} & \textbf{1.80} & 0.98 \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & 1.64          & 1.67          & 1.75          & 1.79          & 1.10 \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & 1.62          & 1.47          & 1.70          & 1.77          & 1.72 \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & 1.59          & 1.44          & 1.64          & 1.75          & \textbf{1.78} \\
-\bottomrule
-\end{tabular}
-\end{table}
 
-\begin{table}[ht]
-\centering
-\caption{<표 25> 벤치마크 성능 비교 — 최대낙폭 (MDD) $\times$ 5 기간 (0에 가까울수록 우위).
-4개 앙상블 슬롯 중 컬럼별 최우수(절대값 최소) 굵게 표시.}
-\label{tab:benchmark_mdd}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & $-23.9\%$ & $-16.2\%$ & $-13.5\%$ & $-23.9\%$ & $-7.6\%$  \\
-$1/N$ (equal-weight)               & $-24.3\%$ & $-21.4\%$ & $-17.3\%$ & $-16.8\%$ & $-12.0\%$ \\
-Risk Parity ($1/\sigma$)           & $-22.0\%$ & $-18.2\%$ & $-15.8\%$ & $-16.1\%$ & $-10.4\%$ \\
-ANN-anchor (Pyo and Lee, 2018)         & $-18.4\%$ & $-12.5\%$ & $-16.1\%$ & $-16.1\%$ & $-18.4\%$ \\
-Ensemble-anchor ($\sigma$ 모형 교체) & $-20.5\%$ & $-17.1\%$ & $-17.6\%$ & $-16.5\%$ & $-14.0\%$ \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & $-14.7\%$          & $\mathbf{-12.8\%}$ & $\mathbf{-8.2\%}$ & $-14.7\%$          & $-8.9\%$ \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & $\mathbf{-14.0\%}$ & $-14.0\%$          & $-8.5\%$          & $\mathbf{-13.4\%}$ & $-8.7\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & $-15.7\%$          & $-15.7\%$          & $-11.4\%$         & $-15.1\%$          & $-7.9\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & $-19.2\%$          & $-19.2\%$          & $-12.6\%$         & $-15.0\%$          & $\mathbf{-7.5\%}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
-\begin{table}[ht]
-\centering
-\caption{<표 26> 벤치마크 성능 비교 — 연환산 수익률 $\times$ 5 기간. 4개 앙상블 슬롯 중 컬럼별 최대값 굵게 표시.}
-\label{tab:benchmark_annret}
-\setlength{\tabcolsep}{6pt}
-\renewcommand{\arraystretch}{1.15}
-\small
-\begin{tabular}{lccccc}
-\toprule
-Strategy & All & R1 & R2 & R3 & R4 \\
-\midrule
-SPY (market)                       & $+14.4\%$ & $+12.7\%$ & $+14.2\%$ & $+12.4\%$ & $+19.7\%$ \\
-$1/N$ (equal-weight)               & $+14.8\%$ & $+14.3\%$ & $+16.1\%$ & $+15.5\%$ & $+10.5\%$ \\
-Risk Parity ($1/\sigma$)           & $+14.2\%$ & $+14.9\%$ & $+15.6\%$ & $+13.9\%$ & $+9.8\%$  \\
-ANN-anchor (Pyo and Lee, 2018)         & $+14.3\%$ & $+16.6\%$ & $+12.9\%$ & $+15.0\%$ & $+15.2\%$ \\
-Ensemble-anchor ($\sigma$ 모형 교체) & $+15.1\%$ & $+11.4\%$ & $+15.9\%$ & $+14.2\%$ & $+17.9\%$ \\
-\midrule
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{lam}}$) & $+15.1\%$          & $\mathbf{+17.2\%}$ & $+15.1\%$          & $\mathbf{+16.7\%}$ & $+11.1\%$ \\
-\textbf{Ensemble-defensive} ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{lam}}$) & $+14.7\%$          & $+15.2\%$          & $+14.7\%$          & $+16.5\%$          & $+11.9\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{eq}}, q^{\mathrm{ff3}}$) & $\mathbf{+15.9\%}$ & $+14.0\%$          & $\mathbf{+16.4\%}$ & $+15.7\%$          & $+16.4\%$ \\
-\textbf{Ensemble-adaptive}  ($\mathbf{p}^{\mathrm{rp}}, q^{\mathrm{ff3}}$) & $+15.3\%$          & $+13.1\%$          & $+15.6\%$          & $+15.3\%$          & $\mathbf{+16.8\%}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+TABLEPLACEHOLDER24
+
+
+
+
+
+TABLEPLACEHOLDER25
+
+
+
+
+
+TABLEPLACEHOLDER26
+
+
 
 \end{document}

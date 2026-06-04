@@ -1,6 +1,10 @@
 # JIIS docx 변환 — 작업 인수인계 (HANDOFF)
 
-> **파일 정리(2026-06-04)**: 중간 체크포인트 CP1~CP19 삭제됨(아래 CP 이력은 기록용). 현재 보존 파일 = **CP7(파이프라인 베이스·삭제 금지)**, **CP20(최신본)**, JIISsample.docx(템플릿), `_build_jiis/scripts/`(빌드 스크립트), HANDOFF.md, REMAINING_TASKS.md. 재생성: CP7 unzip → normalize_tables.py → finalize_doc.py → pack.
+> **현재 보존 파일(2026-06-04, 최종)**: **`JIIS_변환_CP21.docx`(최신본·39쪽)**, **`JIIS_변환_BASE.docx`(파이프라인 베이스·삭제 금지)**, JIISsample.docx(템플릿), `_build_jiis/scripts/`, HANDOFF.md, REMAINING_TASKS.md. (CP1~CP20 삭제됨; 아래 CP 이력은 기록용.)
+> **빠른 재생성**: BASE unzip → normalize_tables.py → finalize_doc.py → pack(--validate false).
+> **전체 재생성**: prep2(paper.md) → cite(src2→src3, references.bib) → pandoc 2.9.2.1(--reference-doc=JIISsample) → front_matter_splice → gen_tables(/tmp/tablemap2.txt 필요) → normalize → finalize → pack.
+> **CP21 (2026-06-04)**: #19 인용 8키 해소 — 사용자가 references.bib에 8엔트리 추가(키 정합 완료, timmermann은 2006 Forecast Combinations 챕터) → cite.py에 `@incollection`(In Eds., Booktitle, Vol., pp.)·`edition`(Revised ed.) 포맷 확장 → **전체 체인 재실행**. 참고문헌 22→30편, `bib 누락` 마커 0. 영문초록·교신저자·사사제거 등 finalize 단계 전부 유지.
+> ⚠ **신규 함정(중요)**: 새 샌드박스의 pandoc이 자기닫힘 태그를 `" />"`(공백)로 직렬화 → `"/>"` 가정 정규식 전부 미스(본문 스타일 제거·제목 무번호·이미지 축소 실패 → 쪽수 +14 증상). **해결**: normalize/finalize 첫 줄에서 `doc.replace(' />','/>')` 캐논화(반영됨). gen_tables는 /tmp/tablemap2.txt를 읽으므로 보존본을 /tmp로 복사 후 실행.
 
 > 목적: `paper.md`(LaTeX) → 지능정보연구(JIIS) 투고 양식 `.docx` 변환.
 > 이 문서는 compact/세션 전환 후에도 작업이 끊기지 않도록 현재 상태·결정·파일 위치·남은 작업을 기록한다.

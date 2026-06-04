@@ -2,6 +2,7 @@
 import re, sys
 path = sys.argv[1]
 doc = open(path, encoding='utf-8').read()
+doc = doc.replace(' />', '/>')  # pandoc 직렬화 캐논화(자기닫힘 태그 공백 제거)
 HEAVY, LIGHT = 12, 4
 
 NONUM = '<w:numPr><w:ilvl w:val="0"/><w:numId w:val="0"/></w:numPr>'
@@ -179,7 +180,7 @@ def shrink_images(doc):
     n = [0]
     def fix(m):
         d = m.group(0)
-        e = re.search(r'<wp:extent cx="(\d+)" cy="(\d+)"/>', d)
+        e = re.search(r'<wp:extent cx="(\d+)" cy="(\d+)"', d)
         if not e: return d
         cx, cy = int(e.group(1)), int(e.group(2))
         if cy <= MAXH: return d
