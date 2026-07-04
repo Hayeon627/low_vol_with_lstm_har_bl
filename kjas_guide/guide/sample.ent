@@ -1,0 +1,14 @@
+\@doanenote {a}
+macro:->\mbox
+{저자
+1의
+소속;{
+}}
+\@endanenote 
+\@doanenote {b}
+macro:->\mbox
+{저자
+3의
+소속{
+}}
+\@endanenote 

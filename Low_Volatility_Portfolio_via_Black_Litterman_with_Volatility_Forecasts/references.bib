@@ -1,0 +1,432 @@
+% =============================================================
+% References for LSTM-HAR + Black-Litterman portfolio paper
+% Organized by topic, citation keys: lastname+year (lowercase)
+% =============================================================
+
+% ── Black-Litterman & Portfolio Theory ───────────────────────
+
+@article{markowitz1952,
+  author  = {Markowitz, Harry},
+  title   = {Portfolio selection},
+  journal = {The Journal of Finance},
+  volume  = {7},
+  number  = {1},
+  pages   = {77--91},
+  year    = {1952},
+  doi     = {10.1111/j.1540-6261.1952.tb01525.x}
+}
+
+@article{black1992,
+  author  = {Black, Fischer and Litterman, Robert},
+  title   = {Global portfolio optimization},
+  journal = {Financial Analysts Journal},
+  volume  = {48},
+  number  = {5},
+  pages   = {28--43},
+  year    = {1992}
+}
+
+@techreport{helitterman1999,
+  author      = {He, Guangliang and Litterman, Robert},
+  title       = {The intuition behind {Black-Litterman} model portfolios},
+  institution = {Goldman Sachs Investment Management Research},
+  year        = {1999}
+}
+
+@article{ledoitwolf2004,
+  author  = {Ledoit, Olivier and Wolf, Michael},
+  title   = {A well-conditioned estimator for large-dimensional covariance matrices},
+  journal = {Journal of Multivariate Analysis},
+  volume  = {88},
+  number  = {2},
+  pages   = {365--411},
+  year    = {2004}
+}
+
+@article{maillard2010,
+  author  = {Maillard, S\'ebastien and Roncalli, Thierry and Te\"iletche, J\'er\^ome},
+  title   = {The properties of equally weighted risk contribution portfolios},
+  journal = {The Journal of Portfolio Management},
+  volume  = {36},
+  number  = {4},
+  pages   = {60--70},
+  year    = {2010}
+}
+
+% ── Anchor paper ──────────────────────────────────────────────
+
+@article{pyo2018,
+  author  = {Pyo, S. and Lee, J.},
+  title   = {Exploiting the low-risk anomaly using machine learning to enhance the {Black-Litterman} framework},
+  journal = {Pacific-Basin Finance Journal},
+  volume  = {51},
+  pages   = {1--12},
+  year    = {2018}
+}
+
+@article{su2026,
+  author  = {Su, X. and Lu, K. and Yen, J.},
+  title   = {Objective {Black-Litterman} views through deep learning: A novel hybrid model for enhanced portfolio returns},
+  journal = {Expert Systems with Applications},
+  volume  = {295},
+  year    = {2026}
+}
+
+% ── Low-Volatility Anomaly ───────────────────────────────────
+
+@article{frazzini2014,
+  author  = {Frazzini, Andrea and Pedersen, Lasse Heje},
+  title   = {Betting against beta},
+  journal = {Journal of Financial Economics},
+  volume  = {111},
+  number  = {1},
+  pages   = {1--25},
+  year    = {2014}
+}
+
+@article{baker2011,
+  author  = {Baker, Malcolm and Bradley, Brendan and Wurgler, Jeffrey},
+  title   = {Benchmarks as limits to arbitrage: Understanding the low-volatility anomaly},
+  journal = {Financial Analysts Journal},
+  volume  = {67},
+  number  = {1},
+  pages   = {40--54},
+  year    = {2011}
+}
+
+@article{blitz2007,
+  author  = {Blitz, David C. and van Vliet, Pim},
+  title   = {The volatility effect: Lower risk without lower return},
+  journal = {The Journal of Portfolio Management},
+  volume  = {34},
+  number  = {1},
+  pages   = {102--113},
+  year    = {2007}
+}
+
+@techreport{bakerhaugen2012,
+  author      = {Baker, Malcolm and Haugen, Robert A.},
+  title       = {Low risk stocks outperform within all observable markets of the world},
+  institution = {SSRN Working Paper},
+  year        = {2012}
+}
+
+@article{ang2009,
+  author  = {Ang, Andrew and Hodrick, Robert J. and Xing, Yuhang and Zhang, Xiaoyan},
+  title   = {High idiosyncratic volatility and low returns: International and further {U.S.} evidence},
+  journal = {Journal of Financial Economics},
+  volume  = {91},
+  number  = {1},
+  pages   = {1--23},
+  year    = {2009},
+  doi     = {10.1016/j.jfineco.2007.12.005}
+}
+
+% ── LSTM ─────────────────────────────────────────────────────
+
+@article{rumelhart1986learning,
+  title={Learning representations by back-propagating errors},
+  author={Rumelhart, David E and Hinton, Geoffrey E and Williams, Ronald J},
+  journal={nature},
+  volume={323},
+  number={6088},
+  pages={533--536},
+  year={1986},
+  publisher={Nature Publishing Group UK London}
+}
+
+@article{hochreiter1997,
+  author  = {Hochreiter, Sepp and Schmidhuber, J\"urgen},
+  title   = {Long short-term memory},
+  journal = {Neural Computation},
+  volume  = {9},
+  number  = {8},
+  pages   = {1735--1780},
+  year    = {1997},
+  doi     = {10.1162/neco.1997.9.8.1735}
+}
+
+@article{gers2000,
+  author  = {Gers, Felix A. and Schmidhuber, J\"urgen and Cummins, Fred},
+  title   = {Learning to forget: Continual prediction with {LSTM}},
+  journal = {Neural Computation},
+  volume  = {12},
+  number  = {10},
+  pages   = {2451--2471},
+  year    = {2000}
+}
+
+@article{andersen2003modeling,
+  title={Modeling and forecasting realized volatility},
+  author={Andersen, Torben G and Bollerslev, Tim and Diebold, Francis X and Labys, Paul},
+  journal={Econometrica},
+  volume={71},
+  number={2},
+  pages={579--625},
+  year={2003},
+  publisher={Wiley Online Library}
+}
+
+@article{whaley2009understanding,
+  title={Understanding the VIX},
+  author={Whaley, Robert E},
+  journal={Journal of Portfolio Management},
+  volume={35},
+  number={3},
+  pages={98--105},
+  year={2009}
+}
+
+@article{bucci2020realized,
+  title={Realized volatility forecasting with neural networks},
+  author={Bucci, Andrea},
+  journal={Journal of Financial Econometrics},
+  volume={18},
+  number={3},
+  pages={502--531},
+  year={2020},
+  publisher={Oxford University Press}
+}
+
+@article{kim2018forecasting,
+  title={Forecasting the volatility of stock price index: A hybrid model integrating LSTM with multiple GARCH-type models},
+  author={Kim, Ha Young and Won, Chang Hyun},
+  journal={Expert Systems with Applications},
+  volume={103},
+  pages={25--37},
+  year={2018},
+  publisher={Elsevier}
+}
+
+% ── HAR-RV ───────────────────────────────────────────────────
+
+@article{muller1997,
+  author  = {M\"uller, Ulrich A. and Dacorogna, Michel M. and Dav\'e, Rakhal D. and Olsen, Richard B. and Pictet, Olivier V. and von Weizs\"acker, Jakob E.},
+  title   = {Volatilities of different time resolutions---Analyzing the dynamics of market components},
+  journal = {Journal of Empirical Finance},
+  volume  = {4},
+  number  = {2--3},
+  pages   = {213--239},
+  year    = {1997}
+}
+
+@article{corsi2009,
+  author  = {Corsi, Fulvio},
+  title   = {A simple approximate long-memory model of realized volatility},
+  journal = {Journal of Financial Econometrics},
+  volume  = {7},
+  number  = {2},
+  pages   = {174--196},
+  year    = {2009},
+  doi     = {10.1093/jjfinec/nbp001}
+}
+
+% ── ML Methodology & Validation ──────────────────────────────
+
+@article{bates1969combination,
+  title={The combination of forecasts},
+  author={Bates, John M and Granger, Clive WJ},
+  journal={Journal of the operational research society},
+  volume={20},
+  number={4},
+  pages={451--468},
+  year={1969},
+  publisher={Taylor \& Francis}
+}
+
+@book{lopezdeprado2018,
+  author    = {L\'opez de Prado, Marcos},
+  title     = {Advances in Financial Machine Learning},
+  publisher = {John Wiley \& Sons},
+  year      = {2018}
+}
+
+% ── Volatility Forecast Evaluation ───────────────────────────
+
+@article{patton2011,
+  author  = {Patton, Andrew J.},
+  title   = {Volatility forecast comparison using imperfect volatility proxies},
+  journal = {Journal of Econometrics},
+  volume  = {160},
+  number  = {1},
+  pages   = {246--256},
+  year    = {2011}
+}
+
+% ── Performance Evaluation ───────────────────────────────────
+
+@article{jensen1968,
+  author  = {Jensen, Michael C.},
+  title   = {The performance of mutual funds in the period 1945--1964},
+  journal = {The Journal of Finance},
+  volume  = {23},
+  number  = {2},
+  pages   = {389--416},
+  year    = {1968}
+}
+
+@article{jobson1981,
+  author  = {Jobson, J. D. and Korkie, Bob M.},
+  title   = {Performance hypothesis testing with the {Sharpe} and {Treynor} measures},
+  journal = {The Journal of Finance},
+  volume  = {36},
+  number  = {4},
+  pages   = {889--908},
+  year    = {1981}
+}
+
+@article{memmel2003,
+  author  = {Memmel, Christoph},
+  title   = {Performance hypothesis testing with the {Sharpe} ratio},
+  journal = {Finance Letters},
+  volume  = {1},
+  number  = {1},
+  pages   = {21--23},
+  year    = {2003}
+}
+
+@article{sortino1994,
+  author  = {Sortino, Frank A. and Price, Lee N.},
+  title   = {Performance measurement in a downside risk framework},
+  journal = {The Journal of Investing},
+  volume  = {3},
+  number  = {3},
+  pages   = {59--64},
+  year    = {1994}
+}
+
+% ── Statistical Inference (Bootstrap) ────────────────────────
+
+@article{politisromano1994,
+  author  = {Politis, Dimitris N. and Romano, Joseph P.},
+  title   = {The stationary bootstrap},
+  journal = {Journal of the American Statistical Association},
+  volume  = {89},
+  number  = {428},
+  pages   = {1303--1313},
+  year    = {1994}
+}
+
+% ── Factor Models & Asset Pricing (regime/factor analysis) ──
+
+@article{famafrench1992,
+  author  = {Fama, Eugene F. and French, Kenneth R.},
+  title   = {The cross-section of expected stock returns},
+  journal = {The Journal of Finance},
+  volume  = {47},
+  number  = {2},
+  pages   = {427--465},
+  year    = {1992}
+}
+
+@article{fama1993common,
+  title={Common risk factors in the returns on stocks and bonds},
+  author={Fama, Eugene F and French, Kenneth R},
+  journal={Journal of financial economics},
+  volume={33},
+  number={1},
+  pages={3--56},
+  year={1993},
+  publisher={Elsevier}
+}
+
+@article{fama1973risk,
+  title={Risk, return, and equilibrium: Empirical tests},
+  author={Fama, Eugene F and MacBeth, James D},
+  journal={Journal of political economy},
+  volume={81},
+  number={3},
+  pages={607--636},
+  year={1973},
+  publisher={The University of Chicago Press}
+}
+
+@book{cochrane2005,
+  author    = {Cochrane, John H.},
+  title     = {Asset Pricing},
+  edition   = {Revised},
+  publisher = {Princeton University Press},
+  year      = {2005}
+}
+
+@article{cont2001,
+  author  = {Cont, Rama},
+  title   = {Empirical properties of asset returns: stylized facts and statistical issues},
+  journal = {Quantitative Finance},
+  volume  = {1},
+  number  = {2},
+  pages   = {223--236},
+  year    = {2001}
+}
+
+
+@article{yu2019review,
+  title={A review of recurrent neural networks: LSTM cells and network architectures},
+  author={Yu, Yong and Si, Xiaosheng and Hu, Changhua and Zhang, Jianxun},
+  journal={Neural computation},
+  volume={31},
+  number={7},
+  pages={1235--1270},
+  year={2019},
+  publisher={MIT Press One Rogers Street, Cambridge, MA 02142-1209, USA journals-info~…}
+}
+
+% ────────── Hidden Markov Model ──────────────────────
+
+@article{hamilton1989new,
+  title={A new approach to the economic analysis of nonstationary time series and the business cycle},
+  author={Hamilton, James D},
+  journal={Econometrica: Journal of the econometric society},
+  pages={357--384},
+  year={1989},
+  publisher={JSTOR}
+}
+
+@article{demiguel2009optimal,
+  title={Optimal versus naive diversification: How inefficient is the 1/N portfolio strategy?},
+  author={DeMiguel, Victor and Garlappi, Lorenzo and Uppal, Raman},
+  journal={The review of Financial studies},
+  volume={22},
+  number={5},
+  pages={1915--1953},
+  year={2009},
+  publisher={Oxford University Press}
+}
+
+@article{su2026objective,
+  title={Objective Black-Litterman views through deep learning: A novel hybrid model for enhanced portfolio returns},
+  author={Su, Xianran and Lu, Ke and Yen, Jerome},
+  journal={Expert Systems with Applications},
+  volume={295},
+  pages={128868},
+  year={2026},
+  publisher={Elsevier}
+}
+
+@article{barua2023using,
+  title={Using fear, greed and machine learning for optimizing global portfolios: A Black-Litterman approach},
+  author={Barua, Ronil and Sharma, Anil K},
+  journal={Finance Research Letters},
+  volume={58},
+  pages={104515},
+  year={2023},
+  publisher={Elsevier}
+}
+
+@article{lee2025llm,
+  title={LLM-Enhanced Black-Litterman Portfolio Optimization},
+  author={Lee, Youngbin and Kim, Yejin and Kim, Juhyeong and Kim, Suin and Lee, Yongjae},
+  journal={arXiv preprint arXiv:2504.14345},
+  year={2025}
+}
+
+@incollection{timmermann2006forecast,
+  author    = {Timmermann, Allan},
+  title     = {Forecast Combinations},
+  booktitle = {Handbook of Economic Forecasting},
+  editor    = {Elliott, Graham and Granger, Clive W. J. and Timmermann, Allan},
+  publisher = {Elsevier},
+  volume    = {1},
+  pages     = {135--196},
+  year      = {2006}
+}
