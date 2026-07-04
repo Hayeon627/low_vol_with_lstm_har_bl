@@ -1,0 +1,1100 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{kotex}
+\usepackage{natbib} % Required for only writing author(exclude date)
+\usepackage{amsmath} % Writing equation
+\usepackage{amssymb} % Writing R
+\usepackage{appendix} % Use Appendix
+\usepackage{float}
+
+\usepackage{booktabs}   % toprule/midrule/bottomrule
+\usepackage{multirow}
+\usepackage[table]{xcolor}   % for cell coloring (optional)
+\definecolor{posgreen}{HTML}{D5E8D4}
+\definecolor{negred}{HTML}{F8CECC}
+
+\renewcommand{\abstractname}{초록}
+\renewcommand{\figurename}{그림}
+\renewcommand{\tablename}{표}
+
+\title{변동성 예측을 결합한 블랙-리터만 저변동성 포트폴리오 전략}
+\author{서윤범, 김하연, 김재천, 김윤서, 서정욱}
+\date{June 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    블랙-리터만(Black-Litterman, BL) 모형은 시장 균형에 투자자 뷰를 결합하여 평균-분산 최적화의 추정 오차 민감성을 완화하지만, 뷰가 전문가의 주관에 의존한다는 한계를 갖는다. 이를 보완하기 위한 머신러닝 기반 BL 응용 연구가 활발하나 대부분 수익률 예측에 집중되어 있고, 변동성 예측을 직접 뷰로 활용하는 연구는 제한적이다. 본 연구는 인공신경망(ANN) 기반 변동성 예측을 BL 뷰로 결합한 \citet{pyo2018}의 프레임워크를 출발점으로, 두 축으로 확장한다: (1) 단순 ANN을 LSTM과 HAR의 앙상블로 대체하여 시계열 의존 구조를 반영하고, (2) BL의 네 입력 슬롯 ($\mathbf{p}, q, \omega, \mathbf{w}_{mkt}$) 을 각각 복수의 후보로 정의해 곱집합으로 결합한 90개 슬롯 조합을 체계적으로 탐색한다. 2010–2025년 S\&P 500 617 종목, 192개월 실증 분석에서 LSTM-HAR 앙상블은 ANN 대비 변동성 예측 정확도에서 일관된 우위를 보였으며 특히 COVID-19가 포함된 위기 구간(R3)에서 격차가 가장 크게 확대되었다. 이 예측 우위가 포트폴리오 성과로 전이되기 위해서는 뷰 포트폴리오의 대형주 비중 집중 완화($\mathbf{p}^{\mathrm{eq}}, \mathbf{p}^{\mathrm{rp}}$) 가 결정적임을 확인하였다. 본 연구가 제안하는 두 슬롯 옵션 — 모든 시장 국면에서 저변동 뷰를 일관되게 유지하는 Ensemble-defensive (Sharpe 1.04–1.07) 와 강세장 적응을 허용하는 Ensemble-adaptive (Sharpe 1.05–1.10) — 는 편측 20bp 거래비용 차감 후에도 SPY (0.93), $1/N$ (0.86), Risk Parity (0.89), ANN-anchor (0.95) 를 모두 상회한다. 본 연구는 90 슬롯의 차원별 주변 분포와 국면별 결과 분석을 통해 변동성 기반 BL 저변동 전략의 운용 목표별 슬롯 선택 근거를 제시한다.
+\end{abstract}
+
+\noindent\textbf{주제어:} 블랙-리터만, 변동성 예측, LSTM, HAR, 앙상블, 저변동 포트폴리오
+
+\section{서론}
+
+마코위츠의 평균-분산 최적화(Mean-Variance Optimization, MVO, \citealp{markowitz1952}) 이래로 포트폴리오 구성 이론은 기대수익률과 위험의 절충을 다루는 방법론을 다수 발전시켜왔다. 그러나 MVO는 입력값의 추정 오차에 극도로 민감하여, 최적해가 표본 외에서 불안정하고 입력값의 작은 변화에도 극단적인 가중치를 산출한다는 한계가 지적되어 왔다. 이러한 한계에 대응하기 위해 수축(shrinkage) 추정\citep{ledoitwolf2004}, 베이지안 접근 등 다양한 후속 연구가 제안되어 왔다. 그 중 \citet{black1992}이 제안한 블랙-리터만 모형(Black-Litterman, BL) 은 시장 균형 수익률을 사전 분포로 두고 투자자의 견해(뷰, view)를 결합해 사후 기대수익률을 도출하는 베이지안 방법론으로, 추정 오차를 완화하면서도 투자 전문가의 견해를 반영하여 포트폴리오 가중치를 설정할 수 있어 폭넓게 연구되어왔다. 그러나 이 견해가 전문가의 주관적 판단에 의존한다는 한계가 존재한다.
+
+앞선 한계를 해결하기 위해, 투자자의 뷰를 머신러닝 기반으로 예측하는 다수의 연구가 진행되어 왔다. BL 프레임워크의 핵심은 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 설정에 있으며, 머신러닝 기반 BL 응용 연구는 주로 $q$를 트리 기반, 신경망, LLM 등의 모형으로 예측하여 뷰로 주입하는 방식을 취해왔다\citep{barua2023using, su2026objective, lee2025llm}. 이들은 머신러닝 기반 수익률 예측이 BL 프레임워크의 뷰 정량화에 효과적으로 활용될 수 있음을 보였다.
+
+한편 BL의 뷰는 반드시 기대수익률에 국한될 필요는 없다. 자산의 변동성 또한 포트폴리오 구성에서 중요한 요소이며, \citet{baker2011}, \citet{frazzini2014}, \citet{blitz2007} 등이 보고한 저위험 이상현상(저베타, 저변동 종목이 위험 대비 우수한 수익을 보이는 현상)은 변동성을 직접 뷰로 활용할 수 있는 근거를 제공한다. 다만, 본 연구는 이상현상 자체의 검증이 아닌, 현상의 존재를 출발점으로 BL 프레임워크 내에서 변동성을 신호로서 효과적으로 활용하는 방법에 초점을 둔다.
+
+변동성 기반의 머신러닝 접근은 수익률 기반 응용 연구 대비 비교적 부족한 영역으로 남아있으며, 이 관점에서 \citet{pyo2018}는 인공신경망(Artificial Neural Network, ANN) 기반 변동성 예측을 활용해 종목을 저위험·고위험으로 분류하고, BL 뷰로 결합하는 방법을 KOSPI 200에 적용하여 BL 기반 포트폴리오가 샤프 비율(Sharpe ratio) 0.70을 달성하여 시가총액 비중(0.36) 및 시장 지수(0.59) 대비 우위를 보였다.
+
+그러나 이 방식에는 두 가지 측면에서 추가 검토의 여지를 남긴다. 첫째, ANN 기반의 단순한 변동성 예측은 시계열 구조에 특화된 모형 구조가 아니며, 변동성의 다중 시간 척도\citep{corsi2009}와 순차적 의존성을 모형 차원에서 직접 반영하지 못해 예측 정확도에 한계가 있다. 둘째, BL 프레임워크의 운영 핵심인 포트폴리오 뷰 $\mathbf{p}$와 기대수익률 뷰 $q$의 구성이 저변동성(Low-Volatility) 포트폴리오 성과에 미치는 영향이 체계적으로 검토되지 않았다. 일반적 포트폴리오 구성 연구에서 \citet{demiguel2009optimal}, \citet{maillard2010} 등은 시가총액 대비 동일 가중(equal-weighted, eq)·리스크 패리티(risk parity, rp)가 포트폴리오 효율성 측면에서 우위를 보일 수 있음을 보고하였다. 또한, 기대수익률 뷰 $q$를 Fama-French 회귀 기반 예측값으로 산출하였으나, 해당 예측값의 부호와 크기가 저변동 포트폴리오의 성과에 미치는 영향에 대해서는 체계적인 비교·분석이 미비한 실정이다. 
+
+본 연구는 위 두 영역에 대해 다음과 같이 기여한다. 먼저, LSTM(Long Short-Term Memory)과 HAR(Heterogeneous Autoregressive) 앙상블 모형을 적용하여 변동성의 다중 시간 척도와 순차적 의존성을 동시에 반영하는 예측 구조를 제안한다. 다음으로, BL 프레임워크의 네 가지 핵심 슬롯($\mathbf{p}, q, \omega$, $\mathbf{w}_{mkt}$)에 걸쳐 90개 조합을 체계적으로 탐색함으로써, 저변동 전략의 효과를 극대화할 수 있는 최적의 포트폴리오 슬롯 설정을 제시한다. 이는 비시계열 모형과 고정된 슬롯 구성에 의존했던 선행 연구\citep{pyo2018}를 예측 모형과 포트폴리오 구조 설계라는 두 가지 축 모두에서 유의미하게 확장하였다는 점에서 차별성을 갖는다.
+
+본 연구는 다음과 같은 순서로 구성된다. 2절에서는 변동성 예측 및 BL 응용에 관한 선행 연구를 검토하고, 3절에서는 본 연구의 변동성 예측 모형과 BL 프레임워크의 구조 및 슬롯 구성을 기술한다. 4절에서는 실증 분석 결과를 제시하고, 마지막 5절에서는 연구 결론과 한계점을 논의한다.
+
+\section{선행 연구}\label{sec:related_work}
+
+\subsection{블랙-리터만}
+\label{subsec:bl_review}
+
+블랙-리터만 모형(Black–Litterman, BL, \citealp{black1992}) 은 시장 균형 수익률과 투자자의 뷰를 베이지안 방식으로 결합하는 포트폴리오 최적화 프레임워크로, MVO가 갖는 추정 오차 민감성을 완화하는 데 효과적이다. 모형은 이차 효용 최대화 문제의 역산으로 도출되는 시장 균형 초과수익률 벡터 $\boldsymbol{\pi}$에서 출발한다.
+
+\begin{align}
+    & \boldsymbol{\pi} = \lambda\boldsymbol{\Sigma}\mathbf{w}_{mkt} \qquad(1)\end{align}
+
+여기서 $\boldsymbol{\pi} \in \mathbb{R}^{n \times 1}$은 균형 초과수익률 벡터, $\boldsymbol{\Sigma}\in \mathbb{R}^{n \times n}$은 초과수익률 공분산 행렬, $\mathbf{w}_{mkt} \in \mathbb{R}^{n \times 1}$은 시장 비중 벡터, $\lambda$는 시장 위험회피계수이다. $\lambda$는 모형 외부에서 주어지는 하이퍼파라미터로, \citet{helitterman1999}은 미국 주식시장의 역사적 위험-수익 관계로부터 $\lambda \approx 2.5$를 제안하였으며, 이후 BL 응용 문헌의 표준값으로 널리 채택되었다. 공분산 행렬 $\boldsymbol{\Sigma}$의 추정은 자산 수 $n$이 표본 길이 $T$ 에 비해 클 때 표본 공분산이 큰 추정 오차를 갖는다는 문제가 알려져 있다. \citet{ledoitwolf2004}는 표본 공분산을 구조화된 타깃과 선형 결합하는 수축(shrinkage) 추정량을 제안하여 이 문제를 완화하였으며, 이후 고차원 포트폴리오 추정에서 폭넓게 활용되어 왔다.
+
+사전 분포(prior)는 다음과 같이 설정된다.
+
+\begin{align}
+    \boldsymbol{\mu} \sim N(\boldsymbol{\pi}, \tau\boldsymbol{\Sigma}) \qquad(2)\end{align}
+
+$\tau$는 사전 분포의 불확실성을 조절하며, \citet{helitterman1999}은 사전 분포에 약한 신뢰도를 부여할 때 $\tau$를 작은 값(0.025\textendash 0.1)으로 두는 관행을 확립하였다.
+
+투자자의 뷰는 다음과 같이 표현된다.
+
+\begin{align}
+    q|\boldsymbol{\mu} \sim N(\mathbf{p}\boldsymbol{\mu}, \omega) \qquad(3)\end{align}
+
+여기서 $\mathbf{p} \in R^{1 \times n}$은 뷰 포트폴리오 가중치 벡터, $q \in R$은 단일 상대 뷰의 기대수익률 스칼라, $\omega\in R$는 뷰의 불확실성을 나타내는 스칼라다. $\omega$의 구체적 형태는 BL 응용 문헌에서 다양하게 논의되었으며, \citet{helitterman1999}은 $\omega = \tau\mathbf{p}\boldsymbol{\Sigma}\mathbf{p}^\top$와 같이 사전 분포의 공분산에 비례하는 형태를 표준으로 제시하였다.
+
+사전 분포와 뷰 우도를 결합하면 사후 기대수익률과 공분산은 다음과 같이 도출된다.
+
+\begin{align}
+    & \boldsymbol{\Sigma}_{BL} = [(\tau\boldsymbol{\Sigma})^{-1} + \mathbf{p}^\top\omega^{-1}\mathbf{p}]^{-1} \qquad(4)\\
+    
+    & \boldsymbol{\mu}_{BL} = [(\tau\boldsymbol{\Sigma})^{-1} + \mathbf{p}^\top\omega^{-1}\mathbf{p}]^{-1}[(\tau\boldsymbol{\Sigma})^{-1}\boldsymbol{\pi}+\mathbf{p}^\top\omega^{-1}q] \qquad(5)\end{align}
+
+최적 포트폴리오 비중은 다음을 풀어 산출한다.
+
+\begin{align}
+    \min_{\mathbf{w}}\frac{1}{2}\lambda\mathbf{w}^\top\boldsymbol{\Sigma}_{BL}\mathbf{w}-\mathbf{w}^\top\boldsymbol{\mu}_{BL} \qquad(6)\\
+\text{s.t.} \quad \sum_{i=1}^{n}{w_i} = 1
+\end{align}
+
+\subsection{변동성 예측 모형}
+\label{subsec:vol_pred_review}
+
+금융 자산의 변동성은 시계열적으로 특정 구조가 지속되는 '변동성 군집성(volatility clustering)'과 시차가 길어져도 자기상관이 천천히 감소하는 '장기 의존성(long-memory)'을 보인다\citep{cont2001}. 본 절에서는 이러한 변동성 시계열 구조에 널리 활용되어 온 선형 모형인 HAR\citep{muller1997}과 비선형 시퀀스 학습에 특화된 딥러닝 모형인 LSTM\citep{hochreiter1997}의 구조를 기술한다. 아울러 서로 다른 가정에 기반한 두 모형의 예측값을 결합함으로써 동적 적응성(dynamic adaptability)을 확보하는 앙상블 접근법의 이론적 배경을 정리한다.
+
+\subsubsection{HAR}
+\label{subsubsec:har_review}
+
+\citet{muller1997}은 시장 참여자의 의사결정 시간 지평(time horizon)이 단기·중기·장기로 이질적이라는 '이질적 시장 가정(Heterogeneous Market Hypothesis)'을 제안하였다. 이 가정에 따르면, 변동성의 장기 의존 구조는 서로 다른 시간 척도를 가진 거래 행동이 중첩된 결과로 해석된다. 
+\citet{corsi2009}은 이를 단순 선형 회귀 형태로 구현한 HAR 모형을 개발하였다. HAR 모형은 시차(lag)를 개별적으로 나열하는 대신, 단기(1일), 중기(5일), 장기(22일) 누적 평균 실현분산(Realized Volatility, RV)을 입력 변수로 사용한다. 이를 통해 단 네 개의 모수(parameter)만으로도 복잡한 자기상관 구조를 효과적으로 근사한다는 장점이 있다.
+
+\begin{equation}
+\log RV_{h,t+h} = \beta_0 + \beta_d \log RV_{d,t} + \beta_w \log RV_{w,t} + \beta_m \log RV_{m,t} \qquad(7)\end{equation}
+
+여기에서 $(RV_d, RV_w, RV_m)$는 1일, 5일, 22일에 걸친 변동성 대리변수이다. HAR 모형은 구조적 단순성에도 불구하고 변동성의 장기 의존 구조를 효과적으로 포착하여 변동성 연구의 대표적인 벤치마크로 자리 잡았다.
+
+\subsubsection{LSTM}
+\label{subsubsec:lstm_review}
+
+순환신경망(Recurrent Neural Network, RNN, \citealp{rumelhart1986learning})은 시퀀스 데이터의 시간적 의존성을 학습하기 위해 은닉 상태(hidden state) $h_t$를 시점 간 재귀적으로 전파하는 구조를 갖는다. 그러나 RNN은 역전파 과정에서 기울기가 시간 축을 따라 지수적으로 감소하거나(기울기 소실, vanishing gradient) 지수적으로 증가하는(기울기 폭주, exploding gradient) 문제로 인해, 긴 시퀀스 학습이 실질적으로 어렵다는 한계가 지적되어 왔다.
+
+LSTM\citep{hochreiter1997}은 이러한 한계를 해결하기 위해 설계된 구조이다. LSTM의 핵심 아이디어는 은닉 상태와 별도로 셀 상태(cell state) $c_t$를 두고, [0, 1] 구간의 출력값을 갖는 시그모이드 활성화 함수를 통해 셀 상태의 정보를 선택적으로 보존·삭제·갱신하는 것이다. \citet{gers2000}이 망각 게이트(forget gate)를 도입한 이후, LSTM은 망각·입력·출력 게이트 및 후보 기억 상태(candidate cell state)로 구성된 표준 구조로 정착하였다.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.75\textwidth]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/lstm_cell.png}
+\caption{<그림 1> LSTM 셀의 내부 구조.}
+\label{fig:lstm_cell}
+\end{figure}
+
+그림~1의 LSTM 셀은 시점 $t$에서 다음과 같이 계산된다.
+\begin{align}
+f_t &= \sigma(W_f [h_{t-1}, x_t] + b_f) \qquad(8)\\
+i_t &= \sigma(W_i [h_{t-1}, x_t] + b_i) \qquad(9)\\
+\tilde{c}_t &= \tanh(W_c [h_{t-1}, x_t] + b_c) \qquad(10)\\
+c_t &= f_t \odot c_{t-1} + i_t \odot \tilde{c}_t \qquad(11)\\
+o_t &= \sigma(W_o [h_{t-1}, x_t] + b_o) \qquad(12)\\
+h_t &= o_t \odot \tanh(c_t) \qquad(13)\end{align}
+여기서 $f_t$, $i_t$, $o_t$는 각각 망각·입력·출력 게이트, $\tilde{c}_t$는 후보 기억 상태를 나타낸다. $\sigma(\cdot)$은 시그모이드 활성화 함수, $\tanh(\cdot)$는 하이퍼볼릭 탄젠트 활성화 함수, $\odot$ 은 원소별 곱(Hadamard product)이다. 또한 \(W\)와 \(b\)는 각 구성 요소의 가중치 행렬과 편향 벡터를 나타내며, \([h_{t-1}, x_t]\)는 은닉 상태와 입력 벡터의 결합(concatenation)을 의미한다. 식~(11)의 망각 게이트 $f_t$가 1에 가까울 때 과거 셀 상태가 보존되고 0에 가까울 때 폐기되어, 시계열 장기 의존 구조를 선택적으로 보존하거나 제거할 수 있다.
+
+LSTM은 자연어 처리, 음성 인식 등 시퀀스 학습 문제에서 폭넓게 활용되어 왔으며, 금융 변동성 예측에 적용한 연구들도 다수 보고되었다\citep{bucci2020realized, kim2018forecasting}. 해당 연구들은 LSTM이 변동성 시계열의 비선형 구조를 학습하여 예측에 유의미하게 활용될 수 있음을 보였다.
+
+\subsubsection{예측 앙상블}
+\label{subsubsec:ens_review}
+
+각 모형의 예측 결과를 결합하여 단일 모형 대비 오차를 줄이고자 하는 예측 결합(forecast combination, 이하 앙상블)은 \citet{bates1969combination} 이래로 활발히 연구되어 왔다. 두 예측의 가중 평균이 개별 예측보다 작은 평균제곱오차(Mean Squared Error, MSE)를 갖기 위한 이론적 조건을 분석한 이 연구는, 두 예측 오차 간의 상관관계가 낮을수록 결합을 통한 분산 감소 효과가 커진다는 점을 확인하였다.
+
+이후의 연구는 \citet{bates1969combination}이 제안한 역분산 가중을 다양한 오차 척도로 확장한 변형들을 발전시켜 왔으며\citep{timmermann2006forecast}, 본 연구에서 채택하는 성과 가중(performance-weighted) 결합 방식 역시 이러한 발전 형태 중 하나이다. 구체적으로 각 모형의 과거 예측 오차에 반비례하도록 가중치를 부여하는 적응적 특성을 지닌다.
+
+\begin{equation}
+w_i = \frac{1/e_i}{\sum_{j=1}^{M} 1/e_j} \qquad(14)\end{equation}
+
+여기서 $e_i$는 모형 $i$의 과거 예측 오차(MSE 등)이며, $M$은 결합 대상이 되는 총 모형의 개수이다. 이러한 가중치 구조는 시장 국면 변화에 따라 상대적으로 우수한 성능을 보인 모형의 비중이 자동으로 조정되는 적응적 특성을 가진다.
+
+본 연구에서 결합하는 HAR 모형과 LSTM 모형은 서로 다른 이론적 가정에 기반하고 있다. HAR 모형은 변동성을 단·중·장기 변동성 대리변수의 선형 회귀로 모형화하는 반면, LSTM은 선형성 가정 없이 데이터로부터 비선형 의존 구조를 직접 학습한다. 이처럼 매커니즘이 다른 두 모형은 서로 다른 시장 국면에서 오차를 발생시킬 가능성이 크며, 따라서 두 모형의 앙상블을 통해 단일 모형 대비 더욱 안정적이고 강건한(robust) 예측 성능을 기대할 수 있다.
+
+\subsubsection{Walk-Forward 교차 검증}
+\label{subsubsec:walk_forward_review}
+
+머신러닝 모형의 성능 평가에서 일반적으로 사용되는 무작위 $k$-fold 교차검증은 시계열 데이터에 적용할 경우 미래 정보가 학습 구간에 노출되는 미래 참조 편향(look-ahead bias) 문제를 발생시킨다. 이는 모형이 실제 운영 환경에서는 알 수 없는 정보를 학습에 반영하게 함으로써, 평가 구간(Out-of-Sample, OOS) 성능을 과대 평가하는 결과로 이어진다.
+
+이러한 한계를 극복하기 위해 금융 시계열 예측에서는 학습 구간(In-Sample, IS)과 평가 구간(OOS)을 시간 순서대로 분리하고, 시점을 일정 간격으로 전진시키며 반복 평가하는 Walk-Forward 교차 검증 방식이 활용되어 왔다. 그러나 종속변수가 미래 구간으로 정의되는 경우(본 연구의 경우 향후 21 영업일 수익률 표준편차), IS의 마지막 시점이 포함하는 예측 타깃(forward target)이 OOS 구간의 예측 변수와 시간적으로 중첩되어 잔여 정보가 누설되는 문제(data leakage)가 발생하게 된다.
+
+\citet{lopezdeprado2018}은 이와 같은 잔여 정보 누설을 차단하기 위해 퍼징(Purging)과 엠바고(Embargo) 절차를 결합한 확장된 Walk-Forward 구조를 제안하였다. 퍼징은 IS 종료 직후 타깃 윈도우가 OOS와 겹치는 일정 구간의 표본을 학습에서 배제함으로써 타깃의 시간적 중첩으로 인한 왜곡을 제거하고, 엠바고는 OOS 시작 지점 직전에 추가 안전구간(embargo window)을 두어 시계열 종속변수의 자기상관(autocorrelation)이 충분히 감쇠한 이후에 OOS 평가를 시작하도록 통제한다.
+
+\subsection{블랙-리터만과 변동성 예측의 결합}
+\label{subsec:bl_vol_review}
+
+변동성 예측 결과를 BL의 뷰로 활용하는 시도는 머신러닝 기반 수익률 예측 연구에 비해 상대적으로 미진한 편이었다. \citet{pyo2018}는 변동성 예측을 BL 뷰로 직접 활용한 선행 연구이며, 본 연구의 출발점에 해당한다. 해당 선행 연구는 (i) 종목별 변동성 예측, (ii) 예측 결과를 활용한 BL 뷰로 결합, (iii) 결합된 사후 기대수익률에 기반한 포트폴리오 비중 최적화의 세 단계로 전개된다.
+
+\citet{pyo2018}는 KOSPI 200 종목 각각에 대해 직전 10개월의 월별 변동성을 입력 변수로 활용하여 익월 변동성을 예측한다. 변동성 예측 모형으로 ANN, 가우시안 프로세스 회귀(Gaussian Process Regression, GPR), 서포트 벡터 회귀(Support Vector Regression, SVR), 그리고 GARCH 모형을 비교·평가하였으며, 예측 편차 측면에서 가장 안정적인 성능을 보인 ANN을 최종 예측 모형으로 채택하였다.
+
+변동성 예측 결과를 기반으로 종목을 저변동(변동성 하위 30\%)·고변동(변동성 상위 30\%) 두 그룹으로 분류한 후, 투자 뷰 벡터 $\mathbf{p}$의 개별 요소  $p_i^{mcap}$은 다음과 같이 매수-매도(long-short) 형태로 구성된다.
+\begin{equation}
+    p_i^{mcap} = \begin{cases}
+    +\dfrac{\mathrm{mcap}_i}{\sum_{j \in \mathcal{L}} \mathrm{mcap}_j},  & \text{종목 } i \in \mathcal{L} \text{ (저변동 그룹, 하위 30\%)} ,\\[8pt]
+    -\dfrac{\mathrm{mcap}_i}{\sum_{j \in \mathcal{H}} \mathrm{mcap}_j}, & \text{종목 } i \in \mathcal{H} \text{ (고변동 그룹, 상위 30\%)}, \\[6pt]
+    \phantom{+}0,                & \text{otherwise}.
+\end{cases} \qquad(15)\end{equation}
+여기서 $\mathrm{mcap}_i$는 종목 $i$의 시가총액이며, 각 그룹 내 시가총액 합계로 정규화하여 롱(Long) 측 합은 $+1$, 숏(Short) 측 합은 $-1$이 되는 자기자금조달(self-financing) 구조를 충족한다. 기대수익률 뷰 $q$는 Fama-French 3팩터 모형(FF3, \citep{fama1993common})의 회귀 추정치와 $\mathbf{p}$의 결합으로 산출된다.
+
+\begin{align}
+\hat{r}_i &= \alpha + \beta_{\text{mkt}}(r_{\text{mkt}} - r_f)
+           + \beta_{\text{smb}} \cdot \text{SMB}
+           + \beta_{\text{hml}} \cdot \text{HML} \qquad(16)\\
+q &= \mathbf{p} \hat{\mathbf{r}} \qquad(17)\end{align}
+
+뷰 신뢰도 $\omega$는 직전 시점에서 뷰의 예측 수익률과 실현 수익률 차이의 분산으로 정의된다.
+\begin{equation}
+\omega = \mathrm{var}\bigl(\mathbf{p}_{t-1} \hat{\boldsymbol{\mu}}_{t-1}
+       - \mathbf{p}_{t-1} \boldsymbol{\mu}_{t-1}\bigr) \qquad(18)\end{equation}
+이는 뷰의 신뢰도를 직전 시점의 데이터로부터 경험적으로 추정하는 방식이다.
+
+이렇게 구성된 $(\mathbf{p}, q, \omega)$를 BL의 사후 기대수익률 $\boldsymbol{\mu}_{BL}$과 공분산 $\boldsymbol{\Sigma}_{BL}$ (식~(4), (5))에 대입하여 식~(6)로부터 최종 포트폴리오 자산 배분 비중을 산출한다.
+
+KOSPI 200 종목을 대상으로 한 실증 분석에서 BL 기반 포트폴리오는 샤프 비율 0.70을 달성하여 시가총액 가중 포트폴리오 (0.36) 및 KOSPI 200 지수 (0.59) 대비 우위를 보였다. 이는 변동성 예측을 BL 뷰로 활용하는 접근의 실증적 근거를 제시하였다.
+
+\section{방법론}\label{sec:method}
+
+\subsection{전체 파이프라인}\label{subsec:pipeline}
+
+본 연구는 앞서 2.3절에서 서술한 \citet{pyo2018}의 분석 프레임워크를 기반으로 하되, 다음 두 가지 핵심적인 측면에서 본 연구의 차별성을 확보한다.
+
+첫째, 금융 시계열의 특성을 반영할 수 있는 예측 모형의 고도화이다. \citet{pyo2018}에서 활용된 ANN은 시계열 구조에 특화되지 않은 단순 전방향(Feed-forward) 신경망 구조라는 한계가 있으므로, 본 연구는 이를 2.2절에서 언급한 LSTM과 HAR 모형의 앙상블 구조로 대체한다. 다만, 선행 연구와의 통제된 비교를 위해 ANN을 동일한 환경에서 기준 모형으로 함께 평가한다.
+
+둘째, BL 뷰 설정 슬롯의 확장이다. \citet{pyo2018}은 포트폴리오 뷰 $\mathbf{p}$, 기대수익률 뷰 $q$, 뷰 신뢰도 $\omega$, 사전 분포 $\mathbf{w}_{mkt}$를 단일 설정으로 고정한 반면, 본 연구는 이 네 축을 각각 복수의 후보로 정의한 후 모든 조합을 결합한 90개의 파라미터 슬롯 조합을 구성하여 체계적으로 비교·평가한다. 본문에서는 주요 45개 슬롯 결과를 중심으로 보고하며, 전체 90개 조합에 대한 실증 분석 결과는 부록 B에 수록한다.
+
+본 연구의 실증 분석은 미국 대형주 시장의 S\&P 500 지수 편입 종목을 대상으로 수행한다. 이는 국내 시장에 국한되었던 선행 연구를 넘어, 종목 수와 섹터 다양성이 큰 시장에서의 모형 강건성(robustness)을 확인하기 위함이다.
+
+\begin{figure}[p]
+    \centering
+    \includegraphics[height=0.85\textheight, keepaspectratio]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/bl_pipeline.png}
+    \caption{<그림 2> 본 연구의 전체 분석 파이프라인.}
+    \label{fig:pipeline}
+\end{figure}
+
+전체 연구 파이프라인은 그림~2과 같이 네 단계로 구성된다. (1) LSTM-HAR 앙상블 모형으로 자산별 변동성 $\hat{\sigma}_t$를 예측한 후, 하위 및 상위 30\% 구간을 각각 저변동·고변동 종목으로 분류한다. (2) $\hat{\sigma}_t$는 BL 뷰 파라미터 ($\mathbf{p}, q, \omega$) 구성에 활용되며, 사전 분포 $\mathbf{w}_{mkt}$는 $\hat{\sigma}_t$와 독립적인 경로로 산출된다. 이때 네 슬롯은 각각 3·5·2·3개의 후보를 가지고 있어 총 90개 조합을 형성한다. (3) 시장 균형 사전 분포와 투자자 전망 분포를 베이지안 매커니즘으로 결합하여 (4) 사후 분포 $(\boldsymbol{\mu}_{BL}, \boldsymbol{\Sigma}_{BL})$를 도출하고, MVO를 통해 저변동 포트폴리오 최적 자산 배분 가중치 $\mathbf{w}^*$를 산출한다. 이어지는 절에서는 각 단계의 구체적인 방법론을 기술한다.
+
+\subsection{변동성 예측}\label{subsec:vol_pred}
+
+본 절에서는 앞서 2.2절에서 살펴본 HAR 모형과 LSTM 모형, 그리고 이를 결합하는 예측 앙상블 방법론과 Walk-Forward 구조를 본 연구에 적용한 구체적인 구현 방식을 기술한다.
+
+\subsubsection{종속변수와 입력변수}\label{subsubsec:variable}
+본 연구는 시점 $t$ 기준 향후 21영업일 (약 1개월) 수익률의 표준편차를 종속변수로 사용한다. 21일 예측 윈도우(window) 길이는 포트폴리오 리밸런싱 주기(월 1회)와 일치하도록 동기화되며, 일별 로그 수익률 $r$을 이용하여 다음과 같이 정의된다.
+\begin{equation}
+y_t = \log\bigl(\mathrm{std}(r_{t+1}, \ldots, r_{t+21})\bigr) \qquad(19)\end{equation}
+정의된 종속변수에는 로그 변환을 적용한다. 로그 변동성은 근사적으로 정규분포를 따르므로, MSE를 평가지표로 사용할 때 학습 안정성을 확보할 수 있다는 장점이 있다. 또한 로그 공간에서 학습하기 때문에 지수 역변환을 거친 후에도 항상 양수(positive) 예측이 보장된다. 모형 성능 평가에는 RMSE(Root Mean Squared Error)를 주된 지표로 사용하며, 보조 지표로 스피어만(Spearman) 상관계수와 Hit rate를 함께 확인하여 예측의 방향성과 순위 보존 능력을 종합적으로 평가한다.
+
+입력변수는 1일·5일·22일 세 가지 시간 척도의 변동성 대리변수를 활용하며, 이는 일별 종가수익률 제곱으로 산출한다.
+\begin{align}
+RV_{d,t} &= r_t^2,\\
+RV_{w,t} &= \frac{1}{5}\sum_{s=0}^{4} r_{t-s}^2,\\
+RV_{m,t} &= \frac{1}{22}\sum_{s=0}^{21} r_{t-s}^2.
+\end{align}
+이는 \citet{corsi2009}의 원본 HAR 모형이 사용하는 일내 고빈도 실현변동성을 일별 종가 기반 대리변수로 근사한 형태이다. 본 연구의 분석 대상인 S\&P 500 종목군 (약 617 종, 2010--2025) 전반에 대해 일관된 일내 고빈도 데이터를 확보하기 어렵다는 현실적인 제약을 고려하여, 이와 같은 일별 종가 기반 근사를 채택하였다.
+
+HAR 모형은 위 세 가지 항만을 입력으로 사용하는 반면, LSTM 모형은 세 항의 로그 변환 값에 추가로 시장의 미래 변동성 기대를 반영하는 변동성 지수 (CBOE Volatility Index, VIX, \citealp{whaley2009understanding})의 로그 변환 값을 포함하여 총 4 차원의 입력 벡터를 구성한다.
+\begin{equation}
+\mathbf{x}_t = \bigl[\log RV_{d,t},\ \log RV_{w,t},\ \log RV_{m,t},\
+\log \text{VIX}_t\bigr]^\top \qquad(20)\end{equation}
+LSTM 모형에 VIX 지수를 추가한 이유는 S\&P 500 옵션 시장에 내재된 미래 변동성 기대가 개별 종목의 향후 실현 변동성을 예측하는 데 유용한 정보를 제공할 것이라는 가정에 기반한다.
+
+모형의 최종 출력값 $\hat{y}_t$는 식~(19)에 따라 일별 로그 변동성의 표준편차이다. BL의 시장 균형 수익률 $\boldsymbol{\pi}$와 공분산 행렬 $\boldsymbol{\Sigma}$가 모두 연환산 단위로 정의되므로, 변동성 예측 뷰 역시 동일한 단위로 맞추기 위해 지수 역변환 후 연환산 과정을 거친다.
+\begin{equation}
+\hat{\sigma}_t = \exp(\hat{y}_t) \times \sqrt{252} \qquad(21)\end{equation}
+여기서 $\sqrt{252}$ 는 일간 표준편차를 연간 표준편차로 환산하는 처리이다.
+
+\subsubsection{예측 모형}
+
+본 절에서는 변동성 예측 모형으로 활용된 LSTM과 HAR, 그리고 두 모형의 앙상블 구조와 기준 모형인 ANN의 구체적인 구조 및 하이퍼파라미터 설정을 기술한다.
+
+\paragraph{LSTM}
+LSTM 모형은 2.2.2절에서 살펴본 표준 LSTM 셀 구조(그림~1, 식~8--13)를 1개의 은닉층(1-layer), 은닉 노드 수 32개, 드롭아웃 비율 0.3, 그리고 시퀀스 길이는 63영업일로 구성한다. 시퀀스 길이를 63영업일로 설정한 것은 약 3개월의 시간 척도에 해당하는 기간으로, 변동성 대리변수인 S\&P 500 지수(SPY) 일별 수익률 제곱 시계열의 자기상관이 lag 60 전후까지 통계적으로 유의하게 지속됨을 EDA에서 확인한 결과에 근거한 선택이다. 개별 종목별로 자기상관 길이에 미세한 차이는 존재할 수 있으나, 모형의 통일성과 일관된 평가를 위해 전 종목에 동일하게 적용한다.
+
+학습은 AdamW 옵티마이저(학습률 $10^{-3}$, 가중치 감쇠 $10^{-3}$), MSE 손실함수를 사용하며, 최대 50 에포크(epoch) 동안 진행된다. 이 과정에서 과적합을 방지하기 위해 10 에포크 동안 검증 손실(validation loss)이 개선되지 않을 경우 학습을 중단하는 조기 종료(early stopping) 규칙을 적용하며, 배치 크기(batch size)는 64로 설정한다. 입력 시퀀스 $\mathbf{X}_{t-L+1}, \ldots, \mathbf{X}_t$ ($L=63$) 에 대한 최종 로그 변동성 예측은 다음과 같다.
+\begin{equation}
+\hat{y}^{\text{LSTM}}_t = f_{\text{LSTM}}(\mathbf{X}_{t-L+1}, \ldots,
+\mathbf{X}_t) \qquad(22)\end{equation}
+
+\paragraph{HAR}
+HAR 모형은 2.2.1절의 식~7의 구조를 본 연구의 일별 변동성 대리변수에 적용한다. 회귀계수
+$(\beta_0, \beta_d, \beta_w, \beta_m)$는 각 IS 구간에서 OLS(Ordinary Least Squares) 방식으로 추정하며, OOS 구간에 대한 예측값은 추정된 회귀계수와 OOS 입력 변수의 선형 결합으로 다음과 같이 산출한다.
+\begin{equation}
+\hat{y}^{\text{HAR}}_t = \beta_0 + \beta_d \log RV_{d,t} + \beta_w \log
+RV_{w,t}+ \beta_m \log RV_{m,t} \qquad(23)\end{equation}
+
+\paragraph{Performance-Weighted 앙상블}
+최종 변동성 예측값은 앞서 2.2.3절에서 제시한 performance-weighted 결합 방식(식~14)을 LSTM과 HAR 두 모형에 적용하여 산출한다. 폴드(fold) $k$에서의 모형별 가중치는 직전 폴드 $k-1$의 OOS RMSE 역수에 비례하게 설계되었으며, 폴드 $k=0$에서는 사전 성능 정보가 없으므로 두 모형에 동일한 가중치 0.5를 부여한다.
+
+\begin{align}
+w_k^{\text{LSTM}} &= \frac{1/\text{RMSE}_{k-1}^{\text{LSTM}}}
+{1/\text{RMSE}_{k-1}^{\text{LSTM}} + 1/\text{RMSE}_{k-1}^{\text{HAR}}}, \qquad(24)\\
+w_k^{\text{HAR}} &= 1 - w_k^{\text{LSTM}}. \qquad(25)\end{align}
+
+최종 앙상블 변동성 예측값은 두 모형의 가중 평균이다.
+
+\begin{equation}
+\hat{y}^{\text{ens}}_t = w_k^{\text{LSTM}} \cdot \hat{y}^{\text{LSTM}}_t
++ w_k^{\text{HAR}} \cdot \hat{y}^{\text{HAR}}_t \qquad(26)\end{equation}
+
+두 모형의 개별 예측 성능 및 앙상블 결합을 통한 오차 감소 효과는 추후 4.1에서 비교 분석한다. 그림 3은 입력 변수부터 최종 BL 입력치 산출까지의 전체 흐름을 요약한다.
+
+\begin{figure}[ht]
+\centering
+\renewcommand{\arraystretch}{1.4}
+\begin{tabular}{c c c c c c c}
+\textbf{입력} & & \textbf{모형} & & \textbf{가중 결합} & & \textbf{BL 입력} \\
+\hline
+$\log RV_{d,t}, \log RV_{w,t}, \log RV_{m,t}, \log \text{VIX}_{t}$ & $\longrightarrow$ & LSTM & $\searrow$ & & & \\
+& & & & $\hat{y}^{\text{ens}}_t$& $\longrightarrow$ & $\hat{\sigma}_t$\\
+$\log RV_{d,t}, \log RV_{w,t}, \log RV_{m,t}$ & $\longrightarrow$ & HAR & $\nearrow$ & & & \\
+\end{tabular}
+\caption{<그림 3> Performance-weighted 앙상블 기반의 변동성 예측 흐름.}
+\label{fig:ensemble_flow}
+\end{figure}
+
+\paragraph{ANN (기준 모형)}
+본 연구는 2.3절의 \citet{pyo2018}의 ANN을 기준 모형으로 설정하여, 동일한 평가 환경 하에서 함께 평가한다. \citet{pyo2018}는 ANN의 세부 구조를 명시적으로 보고하지 않았으나, 금융 데이터 특성상 학습 표본 크기가 제한적이어서(60개월 윈도우 기준 유효 표본 약 50개) 과적합 위험이 크다는 점을 고려하였다. 이에 따라 학습 가능 파라미터 수(49개)가 학습 표본 수(약 50개)와 유사한 범위 내에 머물도록, 단일 은닉층 4개의 뉴런으로 구성된 소규모 구조로 재현하여 과적합 위험을 최소화하였다.(그림~4). 은닉층의 활성화 함수로는 ReLU를, 옵티마이저는 Adam을 사용하며, 과적합 방지를 위해 추가적으로 $L_2$ 정규화($\alpha = 0.01$)를 적용하여 추정의 안정성을 보완하였다.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.7\textwidth]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/ann_architecture.png}
+\caption{<그림 4> ANN 기준 모형의 구조.}
+\label{fig:ann_arch}
+\end{figure}
+
+\citet{pyo2018}의 원본 사양에 따라, ANN의 입력 변수는 직전 10개월의 월별 로그 변동성을, 출력 변수는 익월의 월별 로그 변동성을 사용한다. 각 월의 변동성은 해당 월말 기준 직전 21영업일 일별 수익률의 표준편차로 정의하여, LSTM 및 HAR 모형이 사용하는 향후 21영업일 변동성(식~19)과 동일한 일별 로그 변동성 단위로 산출되도록 하였다. 샘플링 주기(일별/월별)에 차이가 있으나 출력 단위가 동일하여 4.1절의 Walk-Forward 평가에서 직접 비교가 가능하다.
+
+\subsubsection{Walk-Forward 학습·평가}
+
+2.2.4절의 퍼징-엠바고 Walk-Forward 구조를 모든 변동성 모형(LSTM, HAR, 앙상블, ANN)의 학습 및 평가에 동일하게 적용한다. 각 폴드는 그림~5과 같이 IS 1,250 영업일(약 5년), 퍼징 21영업일, 엠바고 63영업일, OOS 21영업일의 네 가지 구간으로 구성되며, 매 21영업일 간격으로 전진 이동(rolling)한다.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/walkforward.png}
+\caption{<그림 5> Walk-Forward 슬라이딩 평가 구조 (IS 1{,}250 · Purging 21 · Embargo 63 · OOS 21 영업일).}
+\label{fig:walk_forward}
+\end{figure}
+
+IS 구간의 1,250영업일은 \citet{pyo2018}의 학습 윈도우(60개월)와 동일한 조건 하에서 비교하기 위해 설정하였다. 퍼징 구간의 21영업일은 종속변수의 미래 예측 윈도우(식~19)와 동일한 길이로 설정되었으며, IS 마지막 시점의 미래 타깃이 OOS 구간과 시간적으로 중첩되지 않도록 차단한다. 엠바고 구간의 63영업일은 앞서 정의한 LSTM 모형의 입력 시퀀스 길이(63영업일)와 일치하도록 설정하여, 변동성 자기상관이 충분히 감쇠한 이후에 OOS 평가를 시작하도록 제한한다.
+
+\subsection{블랙-리터만 구조 및 슬롯}\label{sec:bl}
+
+본 절에서는 앞서 2.1절의 BL 일반식(식 1--6)에 등장하는 네 가지 입력 변수인 $\mathbf{w}_{mkt}$ (사전 분포), $\mathbf{p}$ (뷰 포트폴리오), $q$ (뷰 기대수익률), $\omega$ (뷰 신뢰도) 각각에 대해 본 연구에서 비교$\cdot$분석할 슬롯별 옵션을 정의한다. 2.3절의 \citet{pyo2018}가 각 입력 변수에 단일 설정을 채택한 반면, 본 연구는 3.2절의 변동성 예측 결과를 BL 구조에 어떻게 연결할지에 따라 각 입력을 옵션 집합으로 일반화하고, 그 곱집합(Cartesian product)을 슬롯 그리드로 정의한다.
+
+\subsubsection{제안 슬롯}\label{subsubsec:bl_proposed_slot}
+
+\paragraph{사전 분포 ($\mathbf{w}_{mkt}$)}
+
+균형 수익률 $\boldsymbol{\pi}$(식~1) 계산에 사용하는 시장 비중 $\mathbf{w}_{mkt}$를 세 가지 방식으로 구성한다.
+
+\begin{itemize}
+    \item $\mathbf{w}^{\mathrm{mcap}}$: 시가총액 비중 가중. \citet{pyo2018}의 원안이며, CAPM의 균형 시장 포트폴리오 가정에 부합한다.
+    \item $\mathbf{w}^{\mathrm{eq}}$: 동일 가중. 유니버스 전체에 균등한 사전 정보를 부여한다.
+    \item $\mathbf{w}^{\mathrm{rp}}$: 직전 21영업일 실현 변동성의 역수($1/\sigma_{\mathrm{realized}}$) 비중 가중. 저변동 종목에 더 큰 가중치를 배분하는 리스크 패리티\citep{maillard2010} 철학에 기반한다. 단, 사용하는 변동성은 LSTM 예측값이 아닌 전월의 실현 변동성이다.
+\end{itemize}
+
+\paragraph{뷰 포트폴리오 ($\mathbf{p}$)}
+
+$\mathbf{p}$ 벡터는 저변동 자산이 고변동 자산을 초과 성과할 것이라는 뷰를 인코딩한다. 각 리밸런싱 시점 $t$에서 유니버스 내 종목을 앙상블 예측 변동성 $\hat{\sigma}_{i,t}$ 기준으로 오름차순 정렬 후, 하위 30\%(저변동 그룹 $L$)에 양($+$)의 가중치, 상위 30\%(고변동 그룹 $H$)에 음($-$)의 가중치를 부여하며, 나머지 40\%는 0으로 처리한다. 롱 측 가중치의 합은 $+1$, 숏 측 가중치의 합은 $-1$로 정규화되어 $\sum_i p_i = 0$을 만족하며, 이는 자기자금조달(self-financing) 롱-숏 포트폴리오 뷰에 해당한다. 분류 임계값(상하위 30\%)은 \citet{pyo2018}의 설정을 따르며, 그룹 내 가중 방식은 본 연구에서 세 가지로 일반화한다.
+
+\begin{itemize}
+  \item $\mathbf{p}^{\mathrm{mcap}}$: 시가총액 비례 가중. \citet{pyo2018}의 원안으로, 각 그룹 내 시가총액 합계로 정규화한다. 식은 (15)와 동일한 표현이다.
+
+  \item $\mathbf{p}^{\mathrm{eq}}$: 동일 가중. 각 그룹 내 모든 종목에 $+1/|L|$ (롱 측) 또는 $-1/|H|$ (숏 측) 을 배분하여, 시가총액 집중에 따른 편향을 제거하고 변동성 분류 신호를 균등하게 반영한다.
+
+  \item $\mathbf{p}^{\mathrm{rp}}$: 역변동성 가중. 그룹 내 종목에 예측 변동성의 역수에 비례한 비중을 배분한다.
+    \begin{equation}
+      p_i^{\mathrm{rp}} =
+      \begin{cases}
+        +\dfrac{1/\hat{\sigma}_i}{\sum_{j \in \mathcal{L}} 1/\hat{\sigma}_j}, & i \in \mathcal{L}, \\[8pt]
+        -\dfrac{1/\hat{\sigma}_i}{\sum_{j \in \mathcal{H}} 1/\hat{\sigma}_j}, & i \in \mathcal{H}, \\[6pt]
+        \phantom{+}0, & \text{otherwise}.
+      \end{cases} \qquad(27)\end{equation}
+    분류(상하위 30\% 선택) 단계에서는 모형 예측값의 순위 정보를, 가중(그룹 내 배분) 단계에서는 크기 정보를 각각 활용한다는 점에서, $\mathbf{p}^{\mathrm{rp}}$는 모형의 예측값이 이중으로 활용되는 구조다. 이러한 구조는 변동성 예측 신호를 포트폴리오에 적극적으로 반영할 수 있다는 한편, 모델의 추정오차가 누적될 위험을 수반한다. 
+\end{itemize}
+
+\paragraph{뷰 기대수익률 ($q$)}
+
+$q$는 저변동-고변동 그룹 간 기대수익률 스프레드로, 본 연구는 다섯 가지 슬롯을 비교한다. 다섯 가지 슬롯은 $q$를 결정하는 정보 채널에 따라 다음 세 범주로 구분된다.
+
+\begin{itemize}
+  \item \textbf{시장 위험회피도 ($\lambda_q$) 기반}: $q^{\mathrm{lam}}, q^{\mathrm{raw}}, q^{\mathrm{inv}}$ --- SPY 초과수익과 시장 분산으로 추정한 매크로 위험회피도를 신호로 사용한다.
+  \item \textbf{예측 변동성 ($\Delta\hat{\sigma}$) 기반}: $q^{\mathrm{vsp}}$ --- 고/저변동 그룹의 예측 변동성 격차를 $q$에 직접 반영한다.
+  \item \textbf{Fama-French 3팩터 모형 (FF3) 기반}: $q^{\mathrm{ff3}}$ --- \citet{pyo2018}의 원안에 해당하는 본 연구의 앵커 슬롯이다.
+\end{itemize}
+
+앞의 두 범주에 속하는 4개의 슬롯은 공통 기준값 $q_0 = 0.003$을 시장 신호로 동적 조정하는 반면, $q^{\mathrm{ff3}}$은 종목별 팩터 회귀 결과를 $\mathbf{p}$ 벡터와 결합하여 $q$를 직접 산출한다.
+
+\textbf{기준값 $q_0$ 설정.} 4개 동적 조정 슬롯의 기준값 $q_0 = 0.003$(월 0.3\%)은 저위험 이상현상 실증 문헌의 보고치를 보수적으로 반영한 값이다. \citet{frazzini2014}는 미국 주식 표본에서 BAB(Betting Against Beta) 팩터의 월 평균 초과수익을 약 0.55--0.70\% 수준으로 보고하며, \citet{baker2011}, \citet{blitz2007} 역시 저변동 long-short 전략의 월 수익이 0.4--0.7\% 범위임을 확인한다. 본 연구는 예측 모형의 오판 가능성을 감안해 실증치의 약 절반인 0.3\%를 기준값으로 채택한다.
+
+\textbf{$\lambda_q$ 기반 슬롯.} 동적 조정에 사용하는 시장 위험회피도 $\lambda_q$는 $\boldsymbol{\pi}$ 계산용 고정 $\lambda = 2.5$와 별개로, 매 시점 다음과 같이 추정한다.
+\begin{equation}
+  \lambda_q = \mathrm{clip}\!\left(\bar{r}^{\mathrm{ex}}_{\mathrm{SPY}}/\sigma^2_{\mathrm{mkt}},\ 0.5,\ 10.0\right),
+\end{equation}
+여기서 $\mathrm{clip}(x, a, b) = \min(\max(x, a), b)$는 $x$의 값을 $[a, b]$ 범위로 상·하한을 제한하는 함수이며, $\bar{r}^{\mathrm{ex}}_{\mathrm{SPY}}$는 SPY 평균 초과수익률, $\sigma^2_{\mathrm{mkt}}$는 시장 수익률 분산, $\bar{\lambda}_q$는 훈련 기간 내 $\lambda_q$의 평균이다.
+
+\begin{itemize}
+  \item $q^{\mathrm{lam}}$: $\lambda_q$ 비례 조정. 시장이 안정적($\lambda_q$ 상승)일수록 $q$를 강화하고, 불안정($\lambda_q$ 하락)할수록 약화한다.
+    \begin{equation}
+      q^{\mathrm{lam}} = q_0 \times \mathrm{clip}\!\left(\lambda_q/\bar{\lambda}_q,\ 0.1,\ 3.0\right).
+    \end{equation}
+    $[0.1, 3.0]$ 범위의 상·하한 제약은 $q$가 $q_0$의 10\% 미만으로 소멸하거나 3배를 초과하여 증폭되는 것을 방지하기 위한 실용적 제약이며, $q^{\mathrm{inv}}$와 $q^{\mathrm{vsp}}$에도 동일하게 적용된다.
+
+  \item $q^{\mathrm{raw}}$: 상·하한 제약 적용 이전의 $\lambda_q$ 사용. SPY 하락으로 $\lambda_q^{\mathrm{raw}} < 0$이면 $q$가 0으로 수렴하여, 시장 방향에 따라 뷰가 자연 소멸된다.
+    \begin{equation}
+      q^{\mathrm{raw}} = \max\!\left(0,\ q_0\times \lambda_q^{\mathrm{raw}}/\bar{\lambda}_q\right).
+    \end{equation}
+
+  \item $q^{\mathrm{inv}}$: $\lambda_q$ 역수 조정. 불안정 국면에서 $q$를 강화하여 저변동 방어 전략을 키우는, $q^{\mathrm{lam}}$과 반대 방향으로 작동한다.
+    \begin{equation}
+      q^{\mathrm{inv}} = q_0 \times \mathrm{clip}\!\left(\bar{\lambda}_q/\lambda_q,\ 0.1,\ 3.0\right).
+    \end{equation}
+\end{itemize}
+
+\textbf{예측 변동성 기반 슬롯.} $q^{\mathrm{vsp}}$는 모형의 예측 변동성 격차를 훈련 기간 중앙값으로 정규화하여 $q$의 크기를 조정한다. $\lambda_q$ 분류가 매크로 시장 신호를 사용하는 반면, $q^{\mathrm{vsp}}$는 LSTM 예측 변동성을 $q$에 직접 반영한다.
+\begin{equation}
+  q^{\mathrm{vsp}} = q_0 \times \mathrm{clip}\!\left(\Delta\hat{\sigma}_t/\mathrm{median}(\Delta\hat{\sigma}_{\mathrm{train}}),\ 0.1,\ 3.0\right),
+\end{equation}
+여기서 $\Delta\hat{\sigma}_t = \frac{1}{|H|}\sum_{i\in H}\hat{\sigma}_{i,t} - \frac{1}{|L|}\sum_{i\in L}\hat{\sigma}_{i,t}$이며, $H, L$의 정의에 의해 $\Delta\hat{\sigma}_t > 0$이 보장된다. 이 값은 매 리밸런싱 시점마다 시장 상황에 따라 크게 달라질 수 있어, 훈련 기간 내 $\Delta\hat{\sigma}_t$ 시계열의 중앙값으로 나누어 정규화함으로써 위기 구간 등 극단적으로 커지는 시점이 기준값에 미치는 영향을 억제하였다.
+
+\textbf{팩터 모형 기반 슬롯.} \citet{pyo2018}는 FF3 회귀로 $q$를 산출한다는 방향만 제시하고 팩터 프리미엄 산정 방식의 세부는 명시하지 않아, 본 연구는 단기 추정의 불안정성을 피하기 위해 훈련 윈도우(60개월) 내 팩터 평균을 다음 달 기대 팩터 프리미엄으로 사용하는 방식 \citep{fama1973risk, cochrane2005} 으로 구현하였다. 종목별 FF3 롤링 회귀로 추정한 기대수익률 $\hat{r}_i$와 $\mathbf{p}$ 벡터의 결합으로 $q$를 산출하며, 훈련 기간 내 데이터만 사용하므로 look-ahead bias가 없다. 이 구현이 \citet{pyo2018}의 FF3 방식에 해당하는 본 연구의 앵커 슬롯이다.
+\begin{equation}
+  q^{\mathrm{ff3}} = \mathbf{p}\hat{\mathbf{r}}, \qquad
+  \hat{r}_i = \hat{\alpha}_i + \hat{\beta}_i^{\mathrm{mkt}}\bar{f}_{\mathrm{mkt}} + \hat{\beta}_i^{\mathrm{SMB}}\bar{f}_{\mathrm{SMB}} + \hat{\beta}_i^{\mathrm{HML}}\bar{f}_{\mathrm{HML}},
+\end{equation}
+여기서 $\bar{f}_k$는 훈련 윈도우 내 팩터 $k$의 평균값이며, SMB(Small Minus Big)와 HML(High Minus Low)은 FF3 표준 팩터다.
+
+\paragraph{뷰 신뢰도 ($\omega$)}
+
+$\omega$는 사전 균형 수익률 대비 투자자 뷰의 신뢰도를 결정하며, 본 연구는 다음 두 가지 설정을 비교한다.
+
+\begin{itemize}
+  \item $\omega^{\mathrm{he}}$ (He-Litterman 방식): 뷰 포트폴리오의 사전 분산에 비례하여 불확실성을 설정하는 BL 문헌의 표준 방식이다 \citep{helitterman1999}.
+    \begin{equation}
+      \omega^{\mathrm{he}} = \tau\mathbf{p}\boldsymbol{\Sigma}\mathbf{p}^\top.
+    \end{equation}
+
+  \item $\omega^{\mathrm{err}}$ (전월 예측 오차 기반): 각 시점 $t$에서 전월 ($t-1$)의 뷰 포트폴리오 예측 수익률과 실현 수익률 간 오차 제곱으로 불확실성을 추정하며, \citet{pyo2018}의 방식을 따른다.
+    \begin{equation}
+      \omega^{\mathrm{err}} = \left(q_{t-1} - \mathbf{p}_{t-1}\mathbf{r}_{t-1}\right)^2,
+    \end{equation}
+    여기서 $\mathbf{r}_{t-1}$은 $t-1$ 시점의 실현 수익률 벡터다. 전월 뷰 예측이 크게 빗나간 시점에서 불확실성이 자동으로 증가하는 자기교정적 구조이며, 첫 달은 $\omega^{\mathrm{he}}$로 초기화한다.
+
+    이 구현은 \citet{pyo2018} 가 제시한 일반형 식 (18) 의 한 가지 해석에 해당한다. 원 식 $\omega = \mathrm{var}(\mathbf{P}_{t-1}\hat{\boldsymbol{\mu}}_{t-1} - \mathbf{P}_{t-1}\boldsymbol{\mu}_{t-1})$은 모두 단일 시점 $t-1$로 평가되어 있어, $\mathrm{var}$이 (i) $t-1$까지의 과거 시계열에 대한 표본분산인지, (ii) 단일 시점의 제곱 편차인지, (iii) 종목 단면 분산인지가 수학적으로 명확히 규정되지 않는 모호성이 존재한다. 본 연구는 BL 산출의 단순성과 직관성을 확보하기 위해 (ii) 의 해석을 채택하였다. 결과적으로 $\omega^{\mathrm{err}}$ 는 엄밀한 분산 추정량이 아닌 직전 시점 제곱 오차 추정치이나, 전월 오차 크기에 비례해 뷰 신뢰도가 자동 조정되는 자기교정 효과는 동일하게 보존된다.
+\end{itemize}
+
+\subsubsection{Walk-Forward 및 최적화}
+\label{subsubsec:bl_walkforward}
+
+포트폴리오 비중은 월별 리밸런싱 시점마다 시간 순서를 따라 산출하는 Walk-Forward 슬라이딩 방식으로 추정한다. 변동성 예측 단계(3.2절)와 달리 현재 시점의 가중치를 산출하므로, 별도의 퍼징·엠바고 구간 없이, 매 리밸런싱 시점에서 직전 60개월 데이터를 사용한다. 각 리밸런싱 시점 $t$(월 1회)에서 다음 절차를 수행한다.
+
+\begin{enumerate}
+  \item 직전 60개월 일별 로그 수익률에 Ledoit-Wolf 수축 추정량 \citep{ledoitwolf2004}을 적용하여 공분산 행렬 $\boldsymbol{\Sigma}_t$를 산출한다. 이는 BL 프레임워크의 사전·사후 분포 계산에 사용되며, 변동성 예측 모형의 출력($\hat{\sigma}_{i,t}$)과는 독립적으로 산출된다.
+  \item 해당 시점의 시장 비중 $\mathbf{w}_{mkt,t}$와 고정 위험회피도 $\lambda = 2.5$로 식 (1)에 따라 균형 수익률 $\boldsymbol{\pi}_t$를 계산한다.
+  \item 앙상블 모형(또는 ANN 기준 모형)의 예측 변동성 $\hat{\sigma}_{i,t}$로 $\mathbf{p}_t$를 구성하고, 슬롯 설정에 따라 $q_t$와 $\omega_t$를 산출한다.
+  \item 식 (4), (5)에 따라 BL 사후 분포의 평균 $\boldsymbol{\mu}_{BL,t}$와 공분산 $\boldsymbol{\Sigma}_{BL,t}$를 계산한다.
+  \item 식 (6)에 단일 종목 비중 상한 $w_i \leq 0.10$ 제약을 추가한 형태로 최적화하여 포트폴리오 비중을 산출한다.
+\end{enumerate}
+
+비중 상한 10\%는 극단적 집중 투자를 방지하기 위한 운용상 제약이다. 또한 데이터의 가용성을 확보하기 위해 각 리밸런싱 시점에서 훈련 윈도우(60개월) 내 일별 수익률 데이터가 90\% 이상 존재하는 종목만 유효 유니버스로 선별한다. 거래비용은 편측 20bp를 적용하며, 월별 실제 비중 변화량 $\sum_i |\Delta w_{i,t}|$에 비례하여 차감한다. 이는 S\&P 500 구성 종목의 실제 매매 스프레드 대비 보수적인 설정으로, $\omega^{\mathrm{err}}$ 슬롯의 예측오차 기반 신뢰도 조정이 고변동 구간에서 회전율을 높일 수 있다는 점을 고려한 것이다. 무위험 수익률은 미국 3개월 국채 수익률을 사용하며, 샤프 비율 산출 시 초과수익률 계산에 적용한다.
+
+\subsubsection{평가 방법론}
+\label{subsubsec:bl_eval}
+
+전체 분석 기간은 2010년 1월부터 2025년 12월까지(192개월)이며, 시장 국면에 따라 성과가 크게 달라질 수 있으므로 전체 기간 평가와 국면별 성과 분해를 병행한다.
+
+구체적인 국면 분류 과정은 부록 A에 상세히 기술되어 있으며, 본 연구는 Hidden Markov Model(HMM, \citealp{hamilton1989new}) 기반의 통계적 구조전환점 탐지와 금융 이벤트 도메인 지식을 결합하여 네 개의 비중첩 구간을 식별하였다(표 1).
+
+각 국면 및 전체 기간에 대한 성과지표로는 샤프 비율, Sortino 비율, 최대 낙폭(Maximum Drawdown, MDD)을 산출한다. 이와 같은 국면별 성과 분해를 통해 앙상블 기반 BL 포트폴리오의 ANN 대비 우위가 특정 시장 국면에 의존하는지, 혹은 전 국면에 걸쳐 일관되게 유지되는지를 체계적으로 검증한다. 이를 위해 앙상블 모형과 ANN 기준 모형은 동일한 90개 슬롯 조합에 대해 1:1 대응 비교하며, 슬롯 구성은 두 모형 간 완전히 동일하게 유지한다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 1> 분석 국면(regime) 구분 및 시기별 특성}
+\label{tab:regimes}
+\begin{tabular}{llcl}
+\toprule
+국면 & 기간 & 기간(개월) & 특성 \\
+\midrule
+R1 (회복기)  & 2010.01--2012.06 & 30 & Post-GFC 회복, 유럽 재정위기 \\
+R2 (확장기)  & 2012.07--2019.12 & 90 & 장기 Bull Market, 저변동 \\
+R3 (위기기)  & 2020.01--2023.06 & 42 & COVID-19, 2022 약세장 \\
+R4 (정상화)  & 2023.07--2025.12 & 30 & AI 주도 랠리 \\
+\midrule
+\multicolumn{1}{l}{전체} & 2010.01--2025.12 & 192 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{실증 분석}\label{sec:result}
+
+본 연구의 실증 분석은 2010년 1월부터 2025년 12월까지 총 16년(192개월) 동안 미국 S\&P 500 지수에 편입된 종목을 대상으로 수행한다. 종목 유니버스는 분석 기간 중 한 번이라도 S\&P 500에 포함되었던 833개 종목에서 출발하였다. 이 중 야후 파이낸스(Yahoo Finance)를 통해 일별 가격 데이터 확보가 가능한 617개 종목을 최종 분석 대상으로 선정하였으며, 데이터가 제외된 종목들은 상장 폐지나 인수합병 등으로 인한 가용성의 한계에 기인한다. 특히 매 리밸런싱 시점마다 해당 시점의 실제 S\&P 500 편입 종목만을 포트폴리오에 포함시키는 시점별 멤버십 필터링을 적용함으로써 생존 편향을 완화하였으나, 데이터 가용성 한계로 인한 편향을 완전히 배제할 수 없다. 그 외 결측치 처리, 거래비용, 자산별 비중 상한 등 구체적인 포트폴리오 운용 조건은 3.3.2절에서 기술한 바와 같다.
+
+분석에 사용된 주가, 시가총액, VIX 지수, 무위험 수익률 데이터는 야후 파이낸스에서 수집하였으며, FF3 시계열 데이터는 케네스 프렌치(Kenneth French) 데이터 라이브러리를 활용하였다. 또한, 시점별 S\&P 500 편입 종목 정보는 위키피디아(Wikipedia)의 S\&P 500 변경 이력을 바탕으로 구축하였다. 본 절은 변동성 예측 성능(4.1절), 기준 슬롯의 1차원 변형(4.2절), 슬롯 차원별 주변 분포(4.3절), 외부 벤치마크 대비 성과(4.4절) 순으로 실증 분석 결과를 제시한다.
+
+\subsection{변동성 예측 성능}\label{subsec:vol_pred_eval}
+
+표~2는 LSTM 모형과 HAR 모형, 두 모형의 앙상블, 그리고 ANN 기준 모형의 변동성 예측 성능을 전체 기간과 4개 국면 구간 별로 비교한 결과이다.
+
+먼저 단독 모형 성능을 보면, LSTM과 HAR 모형 모두 ANN 기준 모형 대비 일관된 우위를 보여 두 모형의 유용성을 확인하였다. 다만, 두 모형 간의 직접 비교에서는 지표에 따라 차별적인 강점이 관찰된다. LSTM 모형은 금융위기 구간인 R3 국면에서 Spearman 순위상관계수 우위(0.6772 vs HAR 0.6031)를 보이며 종목 간 상대적 변동성 순위를 우수하게 포착하였다. HAR 모형은 전 구간에 걸쳐 RMSE와 Hit Rate 측면에서 보다 안정적인 성능을 기록하였으며, 특히 R3 구간에서의 RMSE 격차(0.4336 vs LSTM 0.5064)가 두드러졌다. 이는 변동성이 급변하는 구간에서 LSTM 모형의 복잡한 학습 구조가 비정상적 패턴에 과적합되어 변동성 예측 오차를 확산시킨 반면, HAR 모형의 단순한 선형 구조는 짧은 표본에서도 안정적인 성능을 유지함을 시사한다. 
+
+이처럼 두 단독 모형이 상이한 오차 특성을 지닌다는 점은, 모형 결합 시 결합 오차의 분산 감소 효과를 기대할 수 있다는 논리적 배경이 된다. 실제로 앙상블 모형은 이러한 상호 보완성을 효과적으로 활용하여 두 단독 모형의 성과를 모두 상회하였으며, 분석 대상인 총 20개의 셀(4개 평가지표 $\times$ 5개 분석 기간) 전반에서 가장 좋은 성능을 보인다. 이는 서로 다른 가정과 구조에 기반한 모형 결합이 단일 모형 대비 안정적인 예측력을 제공한다는 이론적 기대(2.2.3)와 궤를 같이 한다.
+
+특히 앙상블 모형과 ANN 기준 모형 간의 성과 격차는 R3 국면에서 가장 극명하게 나타났다. Spearman 순위상관 격차가 +0.310 (앙상블 0.6874 vs ANN 0.3771)로 가장 유의미한 향상을 보였는데, 이는 제안한 앙상블 모형이 시장의 극단적인 불확실성 하에서도 종목 간 상대적인 서열을 가장 안정적으로 보존할 수 있음을 의미한다. Hit Rate 역시 동일한 맥락에서, R3 국면 내 하위 30\%(저변동성) 식별 정확도는 +0.040 (앙상블 0.6245 vs ANN 0.5842), 상위 30\%(고변동성) 식별 정확도는 +0.036 (0.6913 vs 0.6549)의 성과 개선이 관찰되었다. 본 연구의 자산 배분 전략은 저변동성 종목의 비중 확대와 고변동성 종목의 비중 축소를 동시에 수반한다는 점을 고려할 때, 이처럼 양 극단 영역에서 확보된 높은 식별 정확도는 예측 단계의 우수성이 포트폴리오의 실질적인 위험조정수익률 제고로 전이될 수 있음을 지지하는 근거가 된다. 이러한 변동성 예측 성과가 실제 포트폴리오 구축 단계에서 어떻게 구현되는지는 이어지는 4.2절에서 상세히 논한다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 2> 변동성 예측 성능 (RMSE, Spearman, Hit Rate). ANN을 제외한 모형은 각 월의 마지막 거래일 예측값을 사용. 굵은 글씨는 지표·기간 별 최고 성능.}
+\label{tab:sigma_pred}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{ll cccc}
+\toprule
+Metric & Period & LSTM & HAR & Ens. & ANN \\
+\midrule
+\multirow{5}{*}{RMSE $\downarrow$}
+ & All       & 0.4157 & 0.3825 & \textbf{0.3684} & 0.4969 \\
+ & R1 (회복)   & 0.3839 & 0.3488 & \textbf{0.3479} & 0.5885 \\
+ & R2 (확장)   & 0.3869 & 0.3694 & \textbf{0.3648} & 0.4784 \\
+ & R3 (위기)   & 0.5064 & 0.4336 & \textbf{0.3916} & 0.5303 \\
+ & R4 (정상화) & 0.3774 & 0.3696 & \textbf{0.3620} & 0.4041 \\
+\midrule
+\multirow{5}{*}{Spearman $\uparrow$}
+ & All       & 0.6635 & 0.6473 & \textbf{0.6822} & 0.5312 \\
+ & R1 (회복)   & 0.6997 & 0.7061 & \textbf{0.7236} & 0.5481 \\
+ & R2 (확장)   & 0.5722 & 0.5786 & \textbf{0.5972} & 0.5070 \\
+ & R3 (위기)   & 0.6772 & 0.6031 & \textbf{0.6874} & 0.3771 \\
+ & R4 (정상화) & 0.6289 & 0.6300 & \textbf{0.6532} & 0.5400 \\
+\midrule
+\multirow{5}{*}{Hit-Low (30\%) $\uparrow$}
+ & All       & 0.6126 & 0.6211 & \textbf{0.6300} & 0.6025 \\
+ & R1 (회복)   & 0.7086 & 0.7004 & \textbf{0.7174} & 0.6938 \\
+ & R2 (확장)   & 0.5935 & 0.6029 & \textbf{0.6082} & 0.5827 \\
+ & R3 (위기)   & 0.5919 & 0.6163 & \textbf{0.6245} & 0.5842 \\
+ & R4 (정상화) & 0.6028 & 0.6031 & \textbf{0.6157} & 0.5962 \\
+\midrule
+\multirow{5}{*}{Hit-High (30\%) $\uparrow$}
+ & All       & 0.6378 & 0.6589 & \textbf{0.6621} & 0.6403 \\
+ & R1 (회복)   & 0.6791 & 0.6878 & \textbf{0.6950} & 0.6675 \\
+ & R2 (확장)   & 0.6163 & 0.6361 & \textbf{0.6383} & 0.6256 \\
+ & R3 (위기)   & 0.6548 & 0.6911 & \textbf{0.6913} & 0.6549 \\
+ & R4 (정상화) & 0.6373 & 0.6531 & \textbf{0.6599} & 0.6366 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{기준 슬롯과 1차원 변형}\label{subsec:baseline_slot}
+
+본 절 이후 슬롯 조합은 \texttt{<prior>\_<p>\_<q>\_<omega>} 순서의 토큰 결합으로 표기하며 (예: \texttt{mcap\_mcap\_ff3\_err} $= (\mathbf{w}^{\mathrm{mcap}}, \mathbf{p}^{\mathrm{mcap}}, q^{\mathrm{ff3}}, \omega^{\mathrm{err}})$), 이는 \citet{pyo2018}의 기준 모형 설정에 해당한다. 본 절에서는 해당 기준 슬롯 조합을 출발점으로 설정하고, 네 차원의 입력 변수를 순차적으로 변경하며 앙상블 모형과 ANN 모형 간의 샤프 비율 차이를 비교$\cdot$분석한다. 각 SET의 첫 행($\star$ 표시)은 기준 슬롯 조합을 의미하며, 해당 SET 내 변수 변경에 따른 성과 비교를 위해 반복하여 표기하였다.
+
+
+
+TABLEPLACEHOLDER3
+
+
+
+전체 분석 기간의 결과를 보면, 앙상블 모형은 다수 슬롯 조합에서 ANN 대비 우위를 점하고 있으나, 정작 기준 슬롯 자체에서의 샤프 비율 격차는 $\Delta = +0.000$ 으로 미미하다. 이러한 결과는 앞선 변동성 예측 모형 자체의 우위가 실제 포트폴리오 성과로 직결되기 위해서는 BL을 구성하는 슬롯 차원의 설계가 함께 동반되어야 함을 시사한다. 이에 아래에서는 4개 차원별 변형에 따른 모형 간 성과 차이의 패턴을 분리하여 상세히 분석한다.
+
+먼저 표~3의 $q$ 변형 결과를 보면, 기준 슬롯의 $q^{\mathrm{ff3}}$는 FF3 회귀 기반으로 산출되어 부호 제약이 없는 반면, 본 연구가 추가한 네 가지 슬롯($q^{\mathrm{lam}}, q^{\mathrm{raw}}, q^{\mathrm{inv}}, q^{\mathrm{vsp}}$)은 구조적으로 $q \geq 0$이 항상 보장된다. 이처럼 부호 제약이 부여된 슬롯으로 변경할 경우, R3(위기) 구간에서 앙상블 모형의 우위가 $\Delta = +0.156 \sim +0.357$에 이르는 강한 샤프 비율 상승으로 나타난다. 반면, 기준 슬롯의 $q^{\mathrm{ff3}}$는 R3 구간에서 오히려 ANN 모형이 우위를 보인다 ($\Delta = -0.148$). 이는 위기 구간에서의 모형 간 성과 차이가 $q$ 부호의 안정성에 의존함을 보여주며, 부호가 유동적일 경우 위기 구간에서 앙상블 모형의 변동성 순위 식별력이 포트폴리오 자산 배분 단계에서 희석되거나 상쇄될 수 있음을 시사한다.
+
+$\mathbf{p}$ 벡터를 기준 슬롯 $\mathbf{p}^{\mathrm{mcap}}$에서 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$로 변경하는 경우, 전체 기간의 샤프 비율은 앙상블 모형의 경우 0.946에서 각각 1.099, 1.054로 상승하고, ANN 모형 역시 0.945에서 1.049, 0.970으로 양 모형 모두 개선되는 양상을 보인다. $\mathbf{p}$ 벡터는 개별 종목의 변동성 예측값을 포트폴리오 뷰로 종합하는 가중치를 결정하는 역할을 한다. 이때 $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$ 방식을 채택하는 것은 대형주로의 비중 집중 현상을 완화함으로써, 모형의 변동성 예측 우위가 포트폴리오 성과로 한층 효과적으로 전이되도록 유도한다. 이는 모형 고유의 예측력보다 슬롯 구조의 영향이 포트폴리오 성과에 더 결정적일 수 있음을 보여주는 결과이며, 이에 대한 강건성은 후술할  4.3절에서 전체 슬롯 조합의 분포를 통해 재확인한다. 
+
+반면, 사전 분포 $\mathbf{w}_{mkt}$를 기준 슬롯 $\mathbf{w}^{\mathrm{mcap}}$에서 $\mathbf{w}^{\mathrm{eq}}$, $\mathbf{w}^{\mathrm{rp}}$로 변경하더라도 $\Delta$의 부호 패턴은 기준 슬롯과 동일하게 유지하였다. 즉, R1과 R3 구간에서는 ANN 모형이 우위를 보이고, R2와 R4 구간에서 앙상블 모형이 우위를 점하는 구조가 $\mathbf{w}_{mkt}$ 변경과 무관하게 보존되며 격차의 크기만 조정되었다. 이는 사전 분포 차원이 모형 간 성과 차이의 '방향성'을 결정하기보다는, 격차의 '크기'에만 영향을 미치는 차원으로 해석된다.
+
+마지막으로 뷰 신뢰도($\omega$) 차원에서, 기준 슬롯 $\omega^{\mathrm{err}}$(전월 예측 오차 기반)는 예측이 크게 빗나간 직후 포트폴리오 뷰의 신뢰도를 자동적으로 낮추어 사전 분포에 더 의존하게 만든다. 이는 모형의 예측력이 시점에 따라 변동하는 환경에서 포트폴리오의 손실을 자동으로 통제하는 효과를 갖는다. $\omega^{\mathrm{he}}$로 변경 시 양 모형 모두 샤프 비율이 하락하는 결과 (앙상블: 0.946 → 0.830, ANN: 0.945 → 0.871)를 보여, 기준 슬롯 $\omega^{\mathrm{err}}$ 선택이 양 모형에서 모두 자산 배분 안정성에 유리함을 실증적으로 보인다(R1 회복기 제외).
+
+\subsection{슬롯 차원별 주변 분포}\label{subsec:slot_config}
+
+본 절에서는 4.2절에서 다룬 단일 차원 변경 결과가 전체 슬롯 조합에 대해서도 일관되게 나타나는지 검증한다. 이를 위해 각 슬롯 차원별로 나머지 세 차원의 모든 조합에 대해 평균을 산출한 주변 분포(Marginal Distribution)를 산출하고 이를 시각화하여 제시한다. 전체 90개 슬롯 조합의 세부 성과는 부록 B에 수록하였다.
+
+표~4 는 $\omega = \omega^{\mathrm{err}}$로 고정한 상태에서 $\mathbf{p}$ 벡터 가중치를 $\mathbf{p}^{\mathrm{mcap}}, \mathbf{p}^{\mathrm{eq}}, \mathbf{p}^{\mathrm{rp}}$ 세 가지 방식으로 변경하고, 각 조합 별로 5개의 $q$와 3개의 $\mathbf{w}_{mkt}$ 조합(총 15개 슬롯)을 평균낸 결과이다. 전체 분석 기간을 기준으로 살펴보면, $\mathbf{p}^{\mathrm{mcap}}$ 가중 방식을 적용했을 때는 앙상블 모형의 변동성 예측 우위에도 불구하고, 포트폴리오의 샤프비율 측면에서 ANN 모형이 소폭 우위를 점하는 것으로 나타났다($\Delta = -0.019$). 반면, $\mathbf{p}^{\mathrm{eq}}, \mathbf{p}^{\mathrm{rp}}$로 가중치를 변경할 경우 앙상블 모형의 샤프 비율은 0.929에서 각각 1.038 및 1.008로 상승하며, ANN 모형 역시 $\mathbf{p}^{\mathrm{mcap}}$의 0.948에서 $\mathbf{p}^{\mathrm{eq}}$의 0.970으로 성과가 개선되었다($\mathbf{p}^{\mathrm{rp}}$는 0.920으로 소폭 감소). 이러한 결과는 변동성 예측의 우위가 실제 포트폴리오 성과로 전이되기 위해서는, $\mathbf{p}$ 벡터를 대형주로의 비중 집중이 완화된 가중치 방식으로 구성해야 함을 시사한다. 그림~6에서도 $\mathbf{p}^{\mathrm{eq}}, \mathbf{p}^{\mathrm{rp}}$ 구성 시 전체 기간에서 앙상블 모형과 ANN 모형 간의 성과 분포 차이가 가장 두드러지게 나타난다.
+
+\begin{figure}[hbt!]
+    \centering
+    \includegraphics[width=15cm]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/marginal_mean.png}
+    \caption{<그림 6> BL 슬롯 차원별 샤프 비율 주변 분포 (앙상블 vs ANN).}
+    \label{fig:marginal_boxplot}
+\end{figure}
+
+
+
+TABLEPLACEHOLDER4
+
+
+
+R3(위기) 구간에서는 $\mathbf{p}$ 벡터 구성 방식과 무관하게 앙상블 모형이 일관된 우위를 보이며($\Delta = +0.134, +0.253, +0.212$), 표~5에서도 거의 모든 슬롯에서 앙상블 모형이 ANN 모형을 상회한다.
+이는 변동성 분포가 가장 분산되는 위기 구간에서 앙상블 모형의 종목 순위 식별의 가치가 극대화되며, 변동성 예측 우위가 포트폴리오 성과로 가장 효과적으로 전이된다. 이러한 R3 구간에서의 우위는 Sortino 비율과 MDD에서도 유사한 패턴으로 관찰되며, 상세 슬롯별 성과 지표는 부록 B에 첨부하였다.
+
+R1(회복)과 R2(확장) 구간에서는 $\mathbf{p}^{\mathrm{mcap}}$과 $\mathbf{p}^{\mathrm{eq}}$ 가중 방식 모두 앙상블 모형의 샤프 비율이 ANN 모형을 하회하는 슬롯의 빈도가 더 높지만(R1: $\mathbf{p}^{\mathrm{mcap}}$ 0/15, $\mathbf{p}^{\mathrm{eq}}$ 1/15; R2: $\mathbf{p}^{\mathrm{mcap}}, \mathbf{p}^{\mathrm{eq}}$ 모두 5/15), 손실 규모 측면에서는 두 가중치 방식 간에 명확한 차이가 존재한다. R1 구간에서 $\mathbf{p}^{\mathrm{mcap}}$의 평균 손실 $\Delta = -0.214$는 2011년 8월 미국 국가신용등급 강등 사태를 포함한 소수의 이례적 이벤트 발생 월에 손실이 집중된 결과이다. 이러한 충격은 대형주 비중 집중이 강한 $\mathbf{p}^{\mathrm{mcap}}$ 구조 하에서 증폭되어 나타났다. 반면, $\mathbf{p}^{\mathrm{eq}}$ 방식에서는 균등 배분 효과를 통해 특정 종목의 충격이 포트폴리오 전체로 전이되는 영향이 축소되어 평균 손실이 $-0.046$ 수준으로 통제된다. 즉, $\mathbf{p}^{\mathrm{eq}}$ 가중은 회복기 우위 빈도 면에서는 $\mathbf{p}^{\mathrm{mcap}}$과 유사하나, $\mathbf{p}^{\mathrm{mcap}}$의 대형주 비중 집중이 야기하는 대규모 손실 위험을 효과적으로 완화한다. 자세한 분석은 부록 C 에서 확인할 수 있다.
+
+그림~6의 $q$ 차원을 보면, R3(위기) 구간에서 $q^{\mathrm{lam}}$과 $q^{\mathrm{raw}}$처럼 $q \geq 0$이 보장되어 저변동성 종목의 비중을 일관되게 확대하는 방식이 두 모형 간의 샤프 비율 차이를 가장 크게 만든다. 
+반면 부호 제약이 없는 $q^{\mathrm{ff3}}$의 주변 분포는 R3 구간에서 $\Delta = -0.014$를 기록하여 사실상 ANN 모형과 동등 수준에 머무른다. 이 경우 다른 네 가지 $q$ 슬롯 대비 앙상블 모형의 우위는 거의 소멸한다. 단일 슬롯 기준 (4.2절, 표~3)에서 관찰되었던 R3 구간의 ANN 우위($\Delta = -0.148$)가 평균값에서는 일부 희석되나, 다른 $q$ 슬롯 대비 상대적 약세는 일관되게 유지된다. 이는 앙상블 모형이 식별한 저변동성 종목의 순위 정보가 $q$의 부호가 음수로 반전되지 않는 조건에서 포트폴리오 가중치로 보다 효과적으로 보존됨을 시사한다.
+
+본 절에서 확인한 슬롯 구성이 단순 벤치마크 대비 실제로 의미 있는 성과를 갖는지는 4.4절에서 확인한다.
+
+
+
+TABLEPLACEHOLDER5
+
+
+
+\subsection{벤치마크 성능 비교}\label{subsec:benchmark}
+
+본 절은 4.2--4.3절에서 확인한 변동성 예측 향상 및 슬롯 설계 효과가 표준 벤치마크 대비 실증 우위로 이어지는지 검증한다. 비교 대상은 세 외부 벤치마크(SPY, $1/N$ 동일 가중, Risk Parity) 와 \citet{pyo2018}의 ANN 앵커 슬롯(ANN-anchor: $\mathbf{w}^{\mathrm{mcap}}$, $\mathbf{p}^{\mathrm{mcap}}$, $q^{\mathrm{ff3}}$, $\omega^{\mathrm{err}}$), 변동성 예측 모형만 앙상블로 교체한 앵커 슬롯(Ensemble-anchor), 그리고 본 연구의 두 옵션(Ensemble-defensive와 Ensemble-adaptive, 각 옵션마다 $\mathbf{p}^{\mathrm{eq}}, \mathbf{p}^{\mathrm{rp}}$ 두 변형 — 총 4 슬롯)이다.
+
+
+본 연구는 특정 단일 슬롯만을 최적 모형으로 권장하지 않으며, 운용 목표에 따라 선택 가능한 두 가지 옵션을 제안한다. 모든 시장 국면에서 저변동 뷰를 일관되게 유지하는 방어형 옵션(Ensemble-defensive, $q^{\mathrm{lam}}$)과, $q^{\mathrm{ff3}}$의 크기와 부호가 시장 국면에 따라 변동하는 국면 적응형 옵션(Ensemble-adaptive, $q^{\mathrm{ff3}}$)이다. 각 옵션은 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$ 두 변형으로 운용할 수 있으며, 두 변형은 후술하듯 거의 동등한 성과를 보인다.
+
+
+
+TABLEPLACEHOLDER6
+
+
+
+표~6에서 네 가지 앙상블 슬롯은 모두 외부 벤치마크와 BL 앵커 슬롯의 성과를 상회한다. 전체 분석 기간의 샤프 비율은 Ensemble-defensive가 $\mathbf{p}^{\mathrm{eq}}$ 1.07, $\mathbf{p}^{\mathrm{rp}}$ 1.04를 기록하였고, Ensemble-adaptive가 $\mathbf{p}^{\mathrm{eq}}$ 1.10, $\mathbf{p}^{\mathrm{rp}}$ 1.05를 나타냈다. 이는 $\mathbf{p}$ 벡터 변형 선택과 무관하게 전통적 벤치마크인 SPY(0.93), $1/N$ 동일 가중(0.86), Risk Parity(0.89) 및 ANN-anchor(0.95) 성과를 모두 능가하는 수치이다. MDD 측면에서도 네 가지 Ensemble 슬롯은 SPY 및 ANN-anchor 대비 더 얕은 손실을 기록하며, 특히 Ensemble-defensive 두 변형의 방어력이 가장 우수하다. 이와 관련한 상세 수치는~부록 E에 수록하였다.
+
+Ensemble-anchor의 전체 분석 기간 샤프 비율은 0.95를 기록하여 ANN-anchor와 사실상 동률이다. 즉 기존 앵커 슬롯 구조를 유지한 채 변동성 예측 모형만 앙상블로 교체하는 방식으로는 실제 포트폴리오의 성과 개선이 거의 발생하지 않는다. 반면 $\mathbf{p}$ 벡터 가중치 방식을 $\mathbf{p}^{\mathrm{mcap}}$에서 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$로 변경할 경우, 두 앙상블 옵션 모두 $+0.09 \sim +0.15$의 샤프 비율 개선이 일관되게 나타난다. 이는 변동성 예측력 우위(표~2)가 포트폴리오 성과로 전이되는 결정적 통로가 슬롯 설계, 특히 $\mathbf{p}$ 가중치의 대형주 비중 집중 완화에 있음을 보여주며, $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$가 거의 동등한 개선 효과를 제공한다.
+
+또한, 두 가지 앙상블 옵션은 시장 국면에 따라 보완적인 강점을 보인다. Ensemble-defensive는 R1(회복) 국면과 R3(위기) 국면 등 시장 변동성이 상승하는 구간에서 강점을 보인다($\mathbf{p}^{\mathrm{eq}}$ 기준 샤프 비율 각각 1.08, 0.96). 이는 $q^{\mathrm{lam}}$의 양수 제약이 모든 시점에서 저변동 뷰를 일관되게 유지하기 때문이다. 반면 Ensemble-adaptive는 R2(확장) 국면과 R4(정상화) 강세장 국면에서 강점을 보인다($\mathbf{p}^{\mathrm{eq}}$ 기준 샤프 비율 각각 1.42, 1.07). 이는 $q^{\mathrm{ff3}}$의 FF3 회귀 기반 구조가 강세장에서 뷰를 적응적으로 재조정함으로써 상승장 포착 능력을 제공하기 때문이다. R3(위기) 국면에서는 두 옵션의 네 가지 변형 슬롯이 모두 ANN-anchor(0.85)를 상회하였으며($0.87 \sim 0.96$), R4 강세장 국면에서는 Ensemble-adaptive의 두 변형 슬롯이 ANN-anchor(0.71)를 크게 상회하는 성과(1.07, 1.10)를 기록했다. 한편 $\mathbf{p}$ 가중 방식의 효과는 시장 국면에 따라 비대칭적으로 작동하는 특성을 보였다. R1 국면에서는  $\mathbf{p}^{\mathrm{eq}}$ 방식이 $\mathbf{p}^{\mathrm{rp}}$ 방식 대비 Ensemble-defensive에서 약 0.10, Ensemble-adaptive에서 약 0.06의 성과 우위를 나타냈다. 반대로 R4 국면에서는 $\mathbf{p}^{\mathrm{rp}}$ 방식이 두 옵션 모두에서 $\mathbf{p}^{\mathrm{eq}}$ 방식을 약간 상회하는 결과(Ensemble-defensive 0.71 vs 0.64, Ensemble-adaptive 1.10 vs 1.07)를 보였다.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/benchmark_plot.png}
+\caption{<그림 7> 누적수익률(상단, log scale) 및 drawdown(하단), 2010-01\textendash 2025-12. R3(위기) 국면 음영. 파랑=Ensemble-defensive, 초록=Ensemble-adaptive.}
+\label{fig:benchmark_cumret}
+\end{figure}
+
+Ensemble-defensive와 Ensemble-adaptive는 전체 분석 기간 샤프 비율과 누적 수익률이 거의 동등하지만(그림~7), 국면별 성과 구성이 상이하므로 운용 목표에 따라 선택할 수 있다. 저변동 정체성을 모든 시장 국면에서 엄격히 유지하려는 보수적 운용 방식에는 Ensemble-defensive가, 강세장에서의 추가 상승 수익을 일정 부분 허용하는 적응적 운용 방식에는 Ensemble-adaptive가 적합하다. 두 가지 옵션 모두 표준 벤치마크 대비 유의미한 성과 우위를 제공하며, $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$ 어느 가중 방식을 적용하더라도 일관된 성과를 보여 $\mathbf{p}$ 변형 선택에 강건하다. $q^{\mathrm{ff3}}$이 강세장에서 뷰를 적응적으로 재조정하는 구체적 메커니즘 및 $\mathbf{p}$ 가중치의 완화 효과는 부록 D에서 상세히 분석한다.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\section{결론 및 한계}\label{sec:conclusion}
+
+본 연구는 \citet{pyo2018}의 KOSPI 200 BL 저변동 프레임워크를 S\&P 500 시장에 적용하면서, 변동성 예측 모형과 BL 슬롯 구성을 재검토하고 2010--2025년 192개월을 4개 시장 국면(R1 회복, R2 확장, R3 위기, R4 정상화)으로 분해하여 평가하였다. 단일 슬롯 비교에 그치지 않고 90개 슬롯을 차원별($\mathbf{p} \times \mathbf{w}_{mkt} \times q \times \omega$)로 분해하여 주변 분포를 산출하고, 이를 4개 국면으로 재분해하는 프레임워크를 통해 운용 목표에 따른 슬롯 선택 근거를 제시한 점이 본 연구의 분석적 기여이다.
+
+LSTM-HAR 앙상블 모형은 ANN 모형 대비 변동성 예측 정확도(RMSE, Spearman, Hit Rate)에서 전 구간 일관된 우위를 보였으며, 특히 R3(위기) 국면에서 격차가 전체 분석 기간 대비 약 1.5-2배 확대되었다(RMSE 격차는 전구간과 유사한 수준 유지). R3 국면은 COVID-19 팬데믹 충격(2020년 1\textendash 2분기)과 2022년 긴축 약세장이 복합된 시기로, 시장 전반의 변동성 수준과 종목 간 변동성 격차가 모두 극대화된 환경이었다. 이러한 국면에서는 종목별 변동성 순위가 빠르게 재편되며, 이를 안정적으로 식별하는 능력이 포트폴리오 성과에 가장 결정적으로 작용한 것으로 해석된다. 다만 이러한 예측 우위가 포트폴리오 성과로 전이되기 위해서는 슬롯 설계, 특히 $\mathbf{p}$ 벡터의 대형주 비중 집중 완화가 동반되어야 한다. 변동성 예측 모형만 앙상블로 교체한 Ensemble-anchor는 ANN-anchor와 샤프 비율이 동률(0.95)에 머무르나, $\mathbf{p}$ 가중치를 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$로 변경하면 두 슬롯 구성 모두 $+0.09 \sim +0.15$의 샤프 비율 개선이 일관되게 나타난다.
+
+본 연구는 자산배분 프로세스에서 단일한 최적 슬롯 설정을 고집하기보다, 운용 목표에 따라 BL의 입력 변수를 유연하게 다원화할 수 있는 실무적 가이드라인을 제시하였다. 모든 시장 국면에서 저변동 정체성을 엄격히 유지하려는 보수적 운용에는 $q^{lam}$‬기반의 Ensemble-defensive가, 강세장 국면에서 시장 랠리를 추종하여 초과 수익을 추구하는 동적 자산 배분에는 $q^{ff3}$‬ 기반의 Ensemble-adaptive가 유용한 대안이 될 수 있음을 확인하였다. 두 전략 모두 $\mathbf{p}^{\mathrm{eq}}$와 $\mathbf{p}^{\mathrm{rp}}$‬ 중 어느 변형을 선택하더라도, 편측 20bp의 거래비용을 차감 후 전통적 벤치마크 및 ANN-anchor를 전 구간에 걸쳐 일관되게 상회하였다. 이는 변동성 예측 모형의 고도화가 단일한 최적 슬롯 구조에 국한되지 않고, 운용 목표에 맞는 유연한 BL 입력 설계와 결합될 때 실질적인 위험조정수익률 제고로 이어질 수 있음을 시사한다.
+
+본 연구는 다음과 같은 한계를 가진다. 첫째, 야후 파이낸스 데이터의 가용성 제약으로 인해 833개 종목 중 216개가 분석에서 누락되어 최종 617개 종목만을 대상으로 실증 분석을 수행하였다. 시점별 멤버십 필터링을 통해 생존 편향을 완화하였으나, 이러한 가용성 한계는 포트폴리오의 절대 성과를 과대 추정하는 방향과 위기 구간에 사라진 고변동 종목의 누락으로 인해 저변동성 우위 자체를 과소 추정하는 방향으로 동시에 작용할 수 있어, 편향의 방향을 단정하기 어렵다.
+
+둘째, 본 연구가 사용한 LSTM 모형은 4채널($\mathrm{RV}_{d/w/m}$, $\log(\mathrm{VIX})$)의 입력 피처와 단일 은닉층으로 구성된 단순한 구조다. 따라서 향후 거시 경제 변수, 뉴스 감성 정보, 옵션 시장 정보 등을 추가 자산 신호로 반영하고, 모형을 다층(Multi-layer) 및 어텐션(Attention) 구조로 고도화할 경우 예측 정확도를 추가적으로 개선할 여지가 있다.
+
+셋째, 본 연구에서 관찰된 국면별 성과 결과와 슬롯 메커니즘은 실증적 관찰에 머무르며 인과적 규명에 이르지 못한다. R1(회복) 국면에서 관측된 앙상블 모형 약세의 시점 집중성(부록 C절)과 강세장 국면에서 발생한 $q^{\mathrm{ff3}}$의 부호 반전 현상(부록 D절) 역시 직관적인 합리성을 넘어선 인과적 검증은 본 연구의 분석 범위를 벗어난다. 향후 연구에서는 예측 모형 고도화, 데이터 가용성의 추가 확보, 그리고 슬롯 간 인과적 분해를 통해 본 연구의 실증적 발견을 보완할 필요가 있다.
+
+
+
+
+
+
+
+
+
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\appendix
+\renewcommand{\thesection}{부록 \Alph{section}}
+\renewcommand{\thefigure}{A.\arabic{figure}}
+\renewcommand{\thetable}{A.\arabic{table}}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+
+\section{HMM 기반 시장 국면 분류}\label{app:hmm}
+
+Hidden Markov Model(HMM, \citealp{hamilton1989new})은 관측 불가능한 잠재 상태인 시장 국면(Regime)이 확률적으로 전이하며 관측 데이터를 생성한다고 가정하는 통계 모형으로, 시장 국면처럼 직접 관측되지 않는 구조적 상태를 데이터를 기반으로 식별하는 데 적합하다. 본 연구는 HMM을 활용하여 분석 기간(2010-2025)의 시장 국면을 사후적으로 정의하고, 이를 포트폴리오 성과 분해의 기준으로 활용한다.
+
+\subsection*{A1 데이터 및 학습 기간}
+
+HMM 학습에는 Fama-French 5팩터(Fama-French 5-factor model, FF5)(일별), 매크로 지표 5개(VIX, 장단기 금리차 등), 그리고 개별 종목 일별 수익률로부터 산출한 동일 가중 시장 수익률을 결합한 데이터를 사용하였다. 학습 기간은 2004년 4월부터 2026년 2월까지이며, 유효 거래일은 총 5,512일이다.
+
+HMM은 실시간 트레이딩 신호 생성이 아닌 사후적 시장 국면 정의가 목적이므로, 전체 구간 학습 방식의 미래 정보 반영 문제(look-ahead bias)는 본 연구의 분석 목적상 해당되지 않는다. 또한 국면 레이블은 BL 모형 학습 과정에 직접 투입되지 않으므로 정보 누설 경로도 없다.
+
+\subsection*{A2 입력 피처}
+
+16개 후보 피처 중 이론적 근거를 먼저 적용하고, ADF 단위근 검정·상관 행렬·분산팽창지수(VIF) 다중공선성 검증을 통해 최종 6개 피처를 선별하였다(표~7). 통계 검증은 전체 데이터를 기반으로 계산하였으며, 입력 데이터는 Z-score 방식으로 표준화 후 HMM에 투입하였다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 7> HMM 입력 피처 선택 결과}
+\label{tab:a1_features}
+\begin{tabular}{lll}
+\toprule
+\textbf{피처} & \textbf{설명} & \textbf{선택 근거} \\
+\midrule
+\texttt{mkt\_rf}       & 시장 초과수익률 (일별)     & Bull/Bear 구분의 직접 수익 신호 \\
+\texttt{vol\_21d\_daily} & 21일 실현변동성           & 국면 라벨링 기준 (변동성 순 정렬) \\
+\texttt{vol\_ratio}    & 단기/장기 변동성 비율      & 국면 전환 선행 신호 ($>$1이면 변동성 급증) \\
+\texttt{vix\_basis}    & 기대변동성 $-$ 실현변동성  & 패닉 국면 식별 (음수 $=$ 공포 실현, Bear/Crisis) \\
+\texttt{t10y2y\_chg}   & 장단기 금리차 1차 차분     & 경기 국면 변화 선행지표 (ADF 비정상으로 대체) \\
+\texttt{mom}           & 모멘텀 팩터               & 추세 지속성 (Bull: 양수, Bear: 음수) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{A3 모형 설정 및 국면 수 선택}
+
+Gaussian HMM을 사용하였으며, 방출 분포는 국면별 독립적인 완전 공분산 행렬(full covariance) 구조로 설정하였다. $n = 3, 4, 5$에 대해 전체 기간 HMM을 각각 학습하고 국면 안정성과 경제적 해석 가능성을 기준으로 최적 국면 수를 비교하였다.
+
+$n = 4$ 및 $n = 5$에서 추가로 분리되는 국면은 Bull이 Mild\_Bull로 세분화되는 형태이나, 이 세분화가 GFC(글로벌 금융위기)·COVID·2022 Bear 등 기존 시장 사건과의 대응 관계에서 $n = 3$ 대비 명확한 우위를 보이지 않는다. Bear 및 위기 구간은 $n$에 관계없이 일관되게 포착되므로, 경제적 해석 가능성과 국면 레이블 단순성을 기준으로 $n = 3$을 최종 채택하였다. 국면 레이블은 각 국면의 평균 \texttt{vol\_21d\_daily} 값 기준 오름차순으로 Bull(저변동·강세), Neutral(중변동·중립), Bear(고변동·약세) 순서로 부여하였다.
+
+$n = 3, 4, 5$ 비교 결과, $n$이 커질수록 평균 최대 사후 확률이 낮아지며($n=3$: 0.984, $n=4$: 0.971, $n=5$: 0.976), 고확신 구간($\geq 90\%$) 비율도 감소한다. $n = 3$에서 전체 거래일의 94.5\%가 고확신 구간에 해당해 국면 레이블 신뢰성이 가장 우수하였으며, 이를 최종 채택하였다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 8> 국면 분류 모형 확신도}
+\label{tab:a1_confidence}
+\begin{tabular}{ccccc}
+\toprule
+\textbf{$n$} & \textbf{평균 최대 사후 확률} & \textbf{$\geq$90\% 고확신} & \textbf{70$\sim$90\%} & \textbf{$<$70\% 불확실} \\
+\midrule
+3 & 0.984 & 94.5\% (5,207일) & 3.8\% (207일) & 1.8\% (98일) \\
+4 & 0.971 & 90.9\% (5,012일) & 5.5\% (301일) & 3.6\% (199일) \\
+5 & 0.976 & 92.2\% (5,084일) & 5.1\% (279일) & 2.7\% (149일) \\
+\bottomrule
+\end{tabular}
+\begin{flushleft}
+{\small $^*$ 최대 사후 확률: 각 거래일에서 가장 높은 국면 소속 사후 확률.}
+\end{flushleft}
+\end{table}
+
+\subsection*{A4 국면별 기초 통계}
+
+$n = 3$ 기준 각 국면의 기초 통계는 표~9와 같다. Bear 국면의 일평균 변동성은 Bull 대비 약 3.5배(2.271\% / 0.653\%), VIX는 약 2.5배(35.0 / 14.0)로 높다. 일평균 수익률·변동성·VIX 모두 Bull $\rightarrow$ Neutral $\rightarrow$ Bear 순서로 단조 증가/감소하여, 각 국면이 서로 다른 시장 체질을 나타냄을 확인하였다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 9> 국면별 기초 통계 ($n=3$)}
+\label{tab:a1_stats}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{국면} & \textbf{비중} & \textbf{거래일} & \textbf{일평균 수익률} & \textbf{일평균 변동성} & \textbf{평균 VIX} \\
+\midrule
+Bull    & 52.9\% & 2,914일 & $+$0.063\% & 0.653\% & 14.0 \\
+Neutral & 34.1\% & 1,877일 & $+$0.025\% & 1.070\% & 20.7 \\
+Bear    & 13.1\% &   721일 & $-$0.002\% & 2.271\% & 35.0 \\
+\bottomrule
+\end{tabular}
+\begin{flushleft}
+{\small $^*$ 수익률 및 변동성은 일별 단위. VIX는 연환산 \% (참고 수치).}
+\end{flushleft}
+\end{table}
+
+\subsection*{A5 전이 행렬}
+
+$n = 3$ 기준 일별 국면 전이 행렬은 표~10와 같다. 대각선(자기전이) 확률이 0.969 이상으로, 국면은 일별 노이즈가 아닌 수 주$\sim$수 달 단위로 지속되는 안정적 상태임을 확인하였다. Bull $\leftrightarrow$ Bear 직접 전이 확률은 사실상 0으로, 국면 전환은 인접 상태를 경유해 점진적으로 이루어진다. 이러한 높은 국면 지속성은 국면 신호를 월별 리밸런싱 전략에 활용하기 위한 충분한 조건이 된다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 10> 전이 행렬 ($n=3$, 일별)}
+\label{tab:a1_trans}
+\begin{tabular}{lccc}
+\toprule
+ & \textbf{$\rightarrow$ Bull} & \textbf{$\rightarrow$ Neutral} & \textbf{$\rightarrow$ Bear} \\
+\midrule
+\textbf{Bull}    & 0.987 & 0.012 & $\sim$0 \\
+\textbf{Neutral} & 0.019 & 0.970 & 0.011 \\
+\textbf{Bear}    & $\sim$0 & 0.031 & 0.969 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection*{A6 구조적 전환점}
+
+비터비(Viterbi) 알고리즘으로 추출한 최적 국면 경로에서 이전 국면 $\geq$ 63거래일(약 3개월), 새 국면 $\geq$ 63거래일을 동시에 충족하는 경우만 구조적 전환점으로 정의하여 단기 노이즈를 제거하였다. 추출된 전환점은 표~11와 같으며, post-GFC 본격 강세(2012), COVID 직전 강세(2019), AI 랠리 시작(2023) 등 실제 시장 사건과 시기적으로 일치한다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 11> 구조적 전환점 ($n=3$ 기준, 양방향 $\geq$ 63거래일 조건)}
+\label{tab:a1_breaks}
+\begin{tabular}{llll}
+\toprule
+\textbf{전환일} & \textbf{전환 방향} & \textbf{대응 시장 사건} & \textbf{비고} \\
+\midrule
+2012-08-15 & Neutral $\rightarrow$ Bull & post-GFC 본격 강세      & R1/R2 경계 근거 \\
+2019-11-05 & Neutral $\rightarrow$ Bull & COVID 직전 강세         & R2/R3 경계 근거 \\
+2023-06-05 & Bear/Neutral $\rightarrow$ Bull & AI 랠리 시작       & R3/R4 경계 근거 \\
+2024-08-01 & Bull $\rightarrow$ Neutral & 2024 금리 인하 기대 후퇴 & 분석 기간 내 마지막 전환점 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+$n = 3$ 기준 전환점(2023-06-05)을 분기말로 조정하여 R3와 R4의 경계를 2023년 6월 말로 설정하였다. 2024-08-01 전환점(Bull $\rightarrow$ Neutral)은 R4 내부의 국면 변화로, 평가 국면 경계 조정에는 반영하지 않았다.
+
+\subsection*{A7 평가 국면 정의}
+
+HMM 전환점을 분기말 기준으로 조정하고, COVID 시작 및 AI 랠리를 경제적 직관에 맞추어, 본 연구의 평가 구간을 표~12와 같이 4개 국면으로 정의하였다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 12> 본 연구 평가 국면 정의}
+\label{tab:a1_regimes}
+\begin{tabular}{llcl}
+\toprule
+\textbf{국면} & \textbf{기간} & \textbf{거래일} & \textbf{해석} \\
+\midrule
+R1 & 2010-01 $\sim$ 2012-06 (30개월) & 약 630일   & GFC 회복·유럽 재정위기 구간 \\
+R2 & 2012-07 $\sim$ 2019-12 (90개월) & 약 1,890일 & 저변동 장기 확장 구간 \\
+R3 & 2020-01 $\sim$ 2023-06 (42개월) & 약 882일   & COVID 충격·2022 긴축으로 인한 고변동성 복합 국면 구간 \\
+R4 & 2023-07 $\sim$ 2025-12 (30개월) & 약 630일   & AI 주도 랠리 (정상화) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{슬롯 분석 결과 전체 표}\label{app:result_table}
+
+4.3절의 평균 결과(표~4)를 보완하여, 90 슬롯 전체의 성과를 뷰 신뢰도 $\omega \in \{\omega^{\mathrm{err}}, \omega^{\mathrm{he}}\}$와 평가 지표 $\in \{\text{Sharpe}, \text{Sortino}, \text{MDD}\}$의 6개 조합 표로 제공한다. 표~13--15는 $\omega = \omega^{\mathrm{err}}$ 기준, 표~16--18는 $\omega = \omega^{\mathrm{he}}$ 기준이다.
+
+평가 지표는 다음 세 가지를 사용한다.
+\begin{itemize}
+  \item \textbf{Sharpe 비율}: 평균 초과수익을 표준편차로 나눈 위험 조정 수익률. 클수록 우위.
+  \item \textbf{Sortino 비율}: 샤프 비율의 하방 변동성 버전으로, 분모를 하방 표준편차로 대체한다\citep{sortino1994}. 하락 변동성만 페널티로 반영하며 클수록 우위.
+  \item \textbf{최대낙폭 (MDD)}: 누적 고점 대비 최대 손실 폭(\%). 음수가 손실이므로 클수록(0 에 가까울수록) 우위.
+\end{itemize}
+따라서 모든 표의 $\Delta > 0$ 셀(녹색)은 앙상블이 ANN 대비 위험 조정 수익 또는 손실 폭 측면에서 우위인 경우이다.
+
+
+
+TABLEPLACEHOLDER13
+
+
+
+
+
+TABLEPLACEHOLDER14
+
+
+
+
+
+
+TABLEPLACEHOLDER15
+
+
+
+
+
+
+TABLEPLACEHOLDER16
+
+
+
+
+
+
+TABLEPLACEHOLDER17
+
+
+
+
+
+TABLEPLACEHOLDER18
+
+
+
+\section{R1 회복 국면 결과 분석}\label{app:r1}
+
+본 부록은 5절 셋째 한계에서 인용한 R1 국면 손실의 시점 집중성(약 76\%, 40\%) 및 4.3절의 표~5에서 관찰된 $\mathbf{p}$ 벡터 의존적 비대칭의 정량적 근거를 제공한다.
+
+\subsection{R1 국면 $\mathbf{p}$ 벡터별 앙상블--ANN 격차}
+
+본문 4.3절 표~5에서 샤프 비율 기준 $\mathbf{p}$ 벡터별 앙상블 우위 슬롯 수를 보고하였다. 본 부록은 보조 지표로 누적 수익률 차이를 함께 제시한다(각 $\mathbf{p}$ 별 15 슬롯 평균, R1 30 개월 누적).
+
+\begin{table}[ht]
+\centering
+\caption{<표 19> R1 회복 국면 $\mathbf{p}$ 벡터별 앙상블 vs ANN 격차 — 평균 $\Delta$ Sharpe,
+앙상블 우위 슬롯 수, 누적 $\Delta$Return 세 지표.
+각 $\mathbf{p}$ 값에 대해 $q \times \mathbf{w}_{mkt} = 15$ 슬롯 평균.}
+\label{tab:r1_pmatrix_delta}
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lccc}
+\toprule
+$\mathbf{p}$ & 평균 $\Delta$ Sharpe ($\mathrm{E} - \mathrm{A}$) & 앙상블 우위 슬롯 (Sharpe, /15) & R1 누적 $\Delta$Return \\
+\midrule
+$\mathbf{p}^{\mathrm{mcap}}$ & $-0.214$ & 0 / 15  & $-7.75\%$ \\
+$\mathbf{p}^{\mathrm{eq}}$   & $-0.046$ & 1 / 15  & $-1.74\%$ \\
+$\mathbf{p}^{\mathrm{rp}}$   & $+0.081$ & 14 / 15 & $+0.19\%$ \\
+\bottomrule
+\end{tabular}
+\par\smallskip
+\footnotesize
+\raggedright
+$\Delta$Return = (앙상블 누적 수익) $-$ (ANN 누적 수익), 각 $\mathbf{p}$ 별 15 슬롯 평균.
+\end{table}
+
+R1 앙상블 열위는 $\mathbf{p}^{\mathrm{mcap}}$ 조건에서 가장 두드러지며 ($-7.75\%$), $\mathbf{p}^{\mathrm{eq}}$에서 격차가 큰 폭 완화되고 ($-1.74\%$), $\mathbf{p}^{\mathrm{rp}}$에서는 사실상 사라진다 ($+0.19\%$).
+
+\subsection{$\mathbf{p}^{\mathrm{mcap}}$ 누적 손실의 시점 집중성}
+
+$\mathbf{p}^{\mathrm{mcap}}$ 누적 손실 $-7.75\%$ 의 월별 분포를 보면, 약 76\%가 2011  3·4·8월의 세 시점에 집중된다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 20> $\mathbf{p}^{\mathrm{mcap}}$ 누적 손실의 시점 집중성 — R1 30개월 중
+2011년 3·4·8월 세 시점이 누적 손실의 약 76\%를 차지한다.}
+\label{tab:r1_loss_concentration}
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{llrr}
+\toprule
+시점 & 시장 이벤트 & $\Delta$Return ($\mathbf{p}^{\mathrm{mcap}}$) & 기여도 \\
+\midrule
+2011-03 & Tohoku 지진 + 일본 시장 충격              & $-1.19$\%p & 15.4\% \\
+2011-04 & 포르투갈 구제금융 신청 + 유럽 재정위기 재발 & $-1.65$\%p & 21.3\% \\
+2011-08 & 유로존 위기 + 미국 신용등급 강등           & $-3.08$\%p & 39.7\% \\
+\midrule
+위 3 개 합계 & --                                  & $-5.92$\%p & 76.4\% \\
+나머지 27 개월 & --                                & $-1.83$\%p & 23.6\% \\
+\midrule
+R1 누적 합계 & --                                  & $-7.75$\%p & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+2011-08 단일 월이 R1 누적 손실의 약 40\%를 견인하며, 30개월 R1 국면 손실의 대부분이 2011년 3·4·8월 세 시점에 집중된다. 이러한 표본 크기와 분포의 집중성을 고려할 때, R1 국면 결과는 회복 구간 일반에 대한 결론으로 확장하기 어렵다.
+
+\section{R4 정상화 국면의 $q^{\mathrm{ff3}}$ 부호 반전과 $\mathbf{p}$ 벡터의 완화 효과}\label{app:r4_mechanism}
+
+본 부록은 5절에서 언급한 "\citet{pyo2018} 가 사용한 Fama-French 회귀 기반 $q^{\mathrm{ff3}}$이 시장 상황에 따라 부호가 반전되면서 저변동 전략의 본질이 약화될 수 있다" 는 관찰의 정량적 근거를 제공한다. 본 부록의 모든 분석은 사후적 관찰에 머무르며, 인과적 메커니즘의 규명은 본 연구의 범위를 벗어난다.
+
+\subsection{앵커 슬롯의 국면별 비중 추이}
+
+\citet{pyo2018}가 제안한 앵커 슬롯 \texttt{mcap\_mcap\_ff3\_err}의 저변동·고변동 종목 비중을 4 개 국면에 걸쳐 집계한 결과는 다음과 같다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 21> 앵커 슬롯 (\texttt{mcap\_mcap\_ff3\_err})의 국면별 저변동·고변동 비중 추이.
+저변동 / 고변동은 변동성 예측값 하위 30\% / 상위 30\%로 정의하며, 각 셀은 월별 평균.}
+\label{tab:r4_anchor_weights}
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+& \multicolumn{3}{c}{앙상블 (E)} & \multicolumn{3}{c}{ANN (A)} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+국면 & 저변동 & 고변동 & 스프레드 & 저변동 & 고변동 & 스프레드 \\
+\midrule
+R1 회복   & 0.556 & 0.087 & $+0.469$          & 0.598 & 0.082 & $+0.516$          \\
+R2 확장   & 0.431 & 0.205 & $+0.226$          & 0.453 & 0.181 & $+0.272$          \\
+R3 위기   & 0.403 & 0.212 & $+0.190$          & 0.420 & 0.198 & $+0.222$          \\
+R4 정상화 & 0.250 & 0.395 & $\mathbf{-0.145}$ & 0.263 & 0.366 & $\mathbf{-0.103}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+R1 국면에서 R3 국면까지는 저변동 비중이 고변동 비중보다 큰 저변동 전략이 유지되었으나, R4 국면에서 앙상블 · ANN 모형 모두 변동성 스프레드가 음수로 전환되어 저변동 전략의 본질이 사실상 반전된 상태로 운용되었다.
+
+\subsection{$q^{\mathrm{ff3}}$의 국면별 부호 분포}
+
+앵커 슬롯에서 $q^{\mathrm{ff3}}$의 월별 평균값과 음수 비율을 국면별로 집계한 결과는 다음과 같다.
+
+\begin{table}[ht]
+\centering
+\caption{<표 22> 앵커 슬롯 (\texttt{mcap\_mcap\_ff3\_err})의 $q^{\mathrm{ff3}}$ 국면별 부호 분포 — R4에서 평균값과 음수 빈도가 모두 극단적으로 증가.}
+\label{tab:r4_q_sign}
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{앙상블 (E)} & \multicolumn{2}{c}{ANN (A)} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+국면 & mean$(q)$ & \% $q<0$ & mean$(q)$ & \% $q<0$ \\
+\midrule
+R1 회복   & $+0.0001$          & 43.3\%            & $+0.0022$          & 3.3\%             \\
+R2 확장   & $-0.0010$          & 61.1\%            & $-0.0001$          & 44.4\%            \\
+R3 위기   & $-0.0009$          & 69.0\%            & $-0.0000$          & 40.5\%            \\
+R4 정상화 & $\mathbf{-0.0100}$ & $\mathbf{80.0}$\% & $\mathbf{-0.0099}$ & $\mathbf{90.0}$\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+R4 국면에서 $q^{\mathrm{ff3}}$의 평균값은 다른 국면 대비 높은 음수 값을 보이며, 음수 발생 빈도도 80\textendash 90\% 수준에 도달한다. BL 사후 추정에서 $\mathbf{p}$와 $q$ 항의 부호는 $q$ 의 부호에 의해 결정되므로, R4 국면에서는 저변동($\mathbf{p}$의 양의 가중) · 고변동($\mathbf{p}$의 음의 가중)에 대한 뷰의 방향이 반전되어 고변동 롱 · 저변동 숏으로 작동한다.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\textwidth]{/sessions/sleepy-loving-thompson/mnt/low_vol_with_lstm_har_bl/paper/images/paper_final/r4_ff3_lam.png}
+\caption{<그림 8> $q^{\mathrm{ff3}}$(파란 원, FF3 회귀 기반)과 $q^{\mathrm{lam}}$(초록 사각, $\lambda_q$ 기반)의 월별 시계열 — 앵커 슬롯 \texttt{mcap\_mcap\_ff3\_err} 기준. 빨간 점선은 부호 반전 임계선(0), 음영은 4개 국면. $q^{\mathrm{lam}}$은 전 기간 양수를 유지하나, $q^{\mathrm{ff3}}$은 빈번한 부호 반전 후 R4 국면에서 강한 음수로 수렴한다.}
+\label{fig:q_timeline}
+\end{figure}
+
+그림~8 은 \citet{pyo2018} 가 제안한 앵커 슬롯의 $q^{\mathrm{ff3}}$ 과 동일 앵커에서 $q$ 만 $q^{\mathrm{lam}}$ 으로 교체한 경우의 값을 시각화한 것이다. FF3 기반의 $q^{\mathrm{ff3}}$ 은 R1\textendash R3 구간에서도 부호 반전을 자주 보이며 R4 에 들어서면 0 아래에 머물러 뷰 방향이 반전된 상태가 유지되는 반면,
+양수 clip 범위를 갖는 $\lambda_q$ 기반의 $q^{\mathrm{lam}}$ (3.3.1절 정의) 은 전 기간 양수를 유지하여 저변동 뷰의 일관성을 보존한다.
+
+\subsection{$\mathbf{p}$ 벡터 변경의 완화 효과}
+
+R4 정상화 국면에서 $\mathbf{w}_{mkt} = \mathbf{w}^{\mathrm{mcap}}, \omega = \omega^{\mathrm{err}}$을 고정한 채 $\mathbf{p}$ 와 $q$를 변경한 모든 조합의 스프레드는 다음과 같다(앙상블 기준).
+
+\begin{table}[ht]
+\centering
+\caption{<표 23> R4 정상화 구간에서 $\mathbf{w}_{mkt} = \mathbf{w}^{\mathrm{mcap}}, \omega = \omega^{\mathrm{err}}$ 고정 후 $\mathbf{p}$ 와 $q$를 변경한 모든 조합의 스프레드(저변동 $-$ 고변동, 앙상블 기준).
+$(\mathbf{p}^{\mathrm{mcap}}, q^{\mathrm{ff3}})$ 한 조합에서만 음수로 반전된다.}
+\label{tab:r4_pq_spread}
+\setlength{\tabcolsep}{10pt}
+\renewcommand{\arraystretch}{1.2}
+\small
+\begin{tabular}{lccccc}
+\toprule
+스프레드 (저$-$고) & $q^{\mathrm{lam}}$ & $q^{\mathrm{raw}}$ & $q^{\mathrm{inv}}$ & $q^{\mathrm{vsp}}$ & $q^{\mathrm{ff3}}$ \\
+\midrule
+$\mathbf{p}^{\mathrm{mcap}}$ & $+0.290$ & $+0.290$ & $+0.229$ & $+0.236$ & $\mathbf{-0.145}$ \\
+$\mathbf{p}^{\mathrm{eq}}$   & $+0.335$ & $+0.335$ & $+0.267$ & $+0.278$ & $+0.146$ \\
+$\mathbf{p}^{\mathrm{rp}}$   & $+0.332$ & $+0.332$ & $+0.265$ & $+0.277$ & $+0.153$ \\
+\bottomrule 
+\end{tabular}
+\end{table}
+
+R4 국면에서 스프레드가 음수로 전환되는 조합은 $(\mathbf{p}^{\mathrm{mcap}}, q^{\mathrm{ff3}})$ 단 1개에 불과하며, 동일한 $q^{\mathrm{ff3}}$을 사용하더라도 $\mathbf{p}$를 $\mathbf{p}^{\mathrm{eq}}$ 또는 $\mathbf{p}^{\mathrm{rp}}$로 변경하면 스프레드가 양수($+0.146, +0.153$)로 회복된다. ANN 기준에서도 같은 패턴이 관찰되며($\mathbf{p}^{\mathrm{mcap}} \cdot q^{\mathrm{ff3}}$: $-0.103$, $\mathbf{p}^{\mathrm{eq}} \cdot q^{\mathrm{ff3}}$: $+0.165$, $\mathbf{p}^{\mathrm{rp}} \cdot q^{\mathrm{ff3}}$: $+0.179$), 양수 제약이 있는 $q$와 결합된 $\mathbf{p}$는 모든 조합에서 스프레드 $0.20$\textendash $0.34$ 수준의 저변동 우위 뷰를 유지한다.
+
+즉, R4 국면에서 저변동 전략 본질의 반전은 $\mathbf{p}^{\mathrm{mcap}}$ 가중과 $q^{\mathrm{ff3}}$의 결합 조건에서만 관찰되며, 두 요소 중 어느 한쪽이라도 변경되면 저변동 본질이 부분적 또는 완전 회복된다.
+
+\section{벤치마크 대비 보조 지표}\label{app:benchmark}
+
+4.4절(벤치마크 성능 비교)에서 보고한 샤프 비율 결과(표~6)에 대응하여, 동일한 슬롯과 5개 기간(All, R1 회복, R2 확장, R3 위기, R4 정상화)에 대한 보조 지표 3종을 첨부한다.  표~24는 Sortino 비율, 표~25 는 최대낙폭 (MDD), 표~26은 연환산 수익률을 보고하며, 각 표에서 4개 앙상블 슬롯 중 컬럼별 최우수 값을 굵게 표시한다. Sortino 비율과 연환산 수익률은 클수록, MDD는 0에 가까울수록 우위이다.
+
+
+
+TABLEPLACEHOLDER24
+
+
+
+
+
+TABLEPLACEHOLDER25
+
+
+
+
+
+TABLEPLACEHOLDER26
+
+
+
+\end{document}

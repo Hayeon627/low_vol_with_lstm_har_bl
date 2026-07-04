@@ -1,0 +1,13 @@
+3	tab:1step_variation
+4	tab:p_matrix_avg
+5	tab:p_matrix_win
+6	tab:benchmark_sharpe
+13	tab:app_grid_sharpe_err
+14	tab:app_grid_sortino_err
+15	tab:app_grid_mdd_err
+16	tab:app_grid_sharpe_he
+17	tab:app_grid_sortino_he
+18	tab:app_grid_mdd_he
+24	tab:benchmark_sortino
+25	tab:benchmark_mdd
+26	tab:benchmark_annret
