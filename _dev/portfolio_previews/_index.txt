@@ -1,0 +1,9 @@
+23_da_newgrad_1: 14 pages, first=23_da_newgrad_1_p01.png, last=23_da_newgrad_1_p14.png
+23_da_newgrad_2: 18 pages, first=23_da_newgrad_2_p01.png, last=23_da_newgrad_2_p18.png
+23_kakao_da: 4 pages, first=23_kakao_da_p01.png, last=23_kakao_da_p04.png
+23_coupang_da_1: 24 pages, first=23_coupang_da_1_p01.png, last=23_coupang_da_1_p24.png
+23_coupang_da_2: 22 pages, first=23_coupang_da_2_p01.png, last=23_coupang_da_2_p22.png
+24_da_newgrad: 16 pages, first=24_da_newgrad_p01.png, last=24_da_newgrad_p16.png
+24_yanolja_da: 15 pages, first=24_yanolja_da_p01.png, last=24_yanolja_da_p15.png
+24_chabiomed_da: 22 pages, first=24_chabiomed_da_p01.png, last=24_chabiomed_da_p22.png
+MISSING: 쿠팡_데이터분석가_경력_합격_포트폴리오.pdf
